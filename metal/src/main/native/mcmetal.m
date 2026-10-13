@@ -1571,6 +1571,13 @@ void mc_fx_free(Fx *fx) {
 	free(fx);
 }
 
+// -Dmcopt.metal.fxDirect (opt-in): MetalFX writes the upscaled frame straight into the game's target instead of fx->output
+// plus a full-screen copy, when the target can take it. fxDirectState: 0 not tried, 1 direct, 2 the target is the input,
+// 3 another size, 4 another pixel format, 5 lacks the usage MetalFX writes with, 6 not GPU-private.
+static int fxDirect, fxDirectState;
+void mc_fx_direct(int on) { fxDirect = on; }
+int mc_fx_direct_state(void) { return fxDirectState; }
+
 // reproject: column-major 4x4 taking this frame's unjittered clip space to last frame's. Jitter is in input pixels;
 // motionSign flips the motion vectors' direction (they're written as last frame's position minus this frame's).
 void mc_fx_upscale(Enc *enc, Fx *fx, id<MTLTexture> color, id<MTLTexture> depth, id<MTLTexture> dst, const float *reproject,
@@ -1593,7 +1600,13 @@ void mc_fx_upscale(Enc *enc, Fx *fx, id<MTLTexture> color, id<MTLTexture> depth,
 	s.colorTexture = color;
 	s.depthTexture = depth;
 	s.motionTexture = fx->motion;
-	s.outputTexture = fx->output;
+	id<MTLTexture> out = fx->output;
+	if (fxDirect) {
+		fxDirectState = dst == color ? 2 : dst.width != out.width || dst.height != out.height ? 3 : dst.pixelFormat != out.pixelFormat ? 4
+			: (dst.usage & s.outputTextureUsage) != s.outputTextureUsage ? 5 : dst.storageMode != MTLStorageModePrivate ? 6 : 1;
+		if (fxDirectState == 1) out = dst;
+	}
+	s.outputTexture = out;
 	s.inputContentWidth = s.inputWidth;
 	s.inputContentHeight = s.inputHeight;
 	s.jitterOffsetX = jitterX;
@@ -1603,5 +1616,5 @@ void mc_fx_upscale(Enc *enc, Fx *fx, id<MTLTexture> color, id<MTLTexture> depth,
 	s.depthReversed = YES;
 	s.reset = reset != 0;
 	[s encodeToCommandBuffer:cmd(enc)];
-	[blit(enc) copyFromTexture:fx->output toTexture:dst];
+	if (out != dst) [blit(enc) copyFromTexture:fx->output toTexture:dst];
 }

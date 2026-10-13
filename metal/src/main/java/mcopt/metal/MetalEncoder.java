@@ -636,8 +636,33 @@ final class MetalEncoder implements CommandEncoderBackend {
 		this.flushClear(depth);
 		dst.pendingColorClear = null;
 		this.pendingClears.remove(dst);
+		if (FX_DIRECT && !this.fxDirectOn) {
+			Native.fxDirect(1);
+			this.fxDirectOn = true;
+		}
 		Native.fxUpscale(this.enc, fx, color.handle, depth.handle, dst.handle, reproject, jitterX, jitterY, motionSign, reset ? 1 : 0);
+		if (FX_DIRECT && !this.fxDirectLogged) {
+			this.fxDirectLogged = true;
+			int state = Native.fxDirectState();
+			Log.info("[mcopt] MetalFX direct output (-Dmcopt.metal.fxDirect): " + switch (state) {
+				case 1 -> "on, the upscaled frame goes straight into the game's target (one full-screen copy less per frame)";
+				case 2 -> "off, the target is the upscaler's own input";
+				case 3 -> "off, the target is another size than MetalFX's output";
+				case 4 -> "off, the target has another pixel format";
+				case 5 -> "off, the target wasn't made with the usage MetalFX writes with";
+				case 6 -> "off, the target isn't GPU-private";
+				default -> "not tried";
+			});
+		}
 	}
+
+	/**
+	 * -Dmcopt.metal.fxDirect=true (opt-in until checked in game): MetalFX writes into the game's target directly when it
+	 * can (same size and format, the right usage), dropping the full-screen copy after every upscale. The log says once
+	 * whether it could, and why not.
+	 */
+	private static final boolean FX_DIRECT = Boolean.getBoolean("mcopt.metal.fxDirect");
+	private boolean fxDirectOn, fxDirectLogged;
 
 	@Override
 	public GpuFence createFence() {

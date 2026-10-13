@@ -4,7 +4,7 @@ Source: the `sdk27` CI job (GitHub's `xcode-27` image: macOS 27.0.1, Xcode 27.0,
 declaration marked `API_AVAILABLE(macos(27.0))` in Metal, MetalFX and QuartzCore. Counts there: Metal 47, MetalFX 31,
 QuartzCore 0. The native library builds against this SDK unchanged.
 
-Only item 1 is in, and only opt-in (`-Dmcopt.metal.framegen.matrices=true`); the rest are not adopted yet: each changes an image path that can only be judged in-game. Every adoption goes
+Items 1 and 2 are in, opt-in only (`-Dmcopt.metal.framegen.matrices=true`, `-Dmcopt.metal.fxDirect=true`); the rest are not adopted yet: each changes an image path that can only be judged in-game. Every adoption goes
 behind `if (@available(macOS 27.0, *))`, so macOS 26 keeps today's behaviour.
 
 ## Worth adopting, in order
@@ -25,6 +25,9 @@ behind `if (@available(macOS 27.0, *))`, so macOS 26 keeps today's behaviour.
    directly, if `dst` is created with the scaler's `outputTextureUsage`. Expected result: one full-screen copy less per
    frame (about 24 MB read and 24 MB written per frame at the 14-inch panel's 3024x1964 in BGRA8). The input offsets also let the scaler read a sub-rect
    of a larger target. That is what dynamic resolution renders into, which today it can't hand MetalFX without a copy.
+   **Status:** the same-size case needs no macOS 27 API, so it's in for every macOS as an opt-in,
+   `-Dmcopt.metal.fxDirect=true`: MetalFX writes into the game's target when that target has the same size, format and
+   output usage, and the log says once whether it could and why not. The offsets (macOS 27) are for the sub-rect case.
 
 3. **Frame generation input size** (`MTLFXFrameInterpolator.contentWidth/Height`, `depthContentOffset*`,
    `motionContentOffset*`, `outputOffset*`). Frame generation could take the dynamic-resolution sub-rect directly
