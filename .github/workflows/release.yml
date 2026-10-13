@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15 # arm64
+    runs-on: macos-26 # arm64; the native code uses macOS 26 SDK APIs (MetalFX frame interpolation)
     steps:
       - uses: actions/checkout@v4
 
