@@ -55,7 +55,6 @@ public final class SodiumCompat {
 		List.of("DirectionalVisGraphMixin", "BitArrayAccessor"));
 	private static final Map<String, Boolean> FITS = new HashMap<>();
 	private static final java.util.Set<String> OFF = new java.util.TreeSet<>();
-	private static final java.util.Set<String> OFF = new java.util.TreeSet<>();
 	private static @Nullable String version;
 	private static boolean checked;
 	private static final Map<String, byte @Nullable []> CLASSES = new HashMap<>();
