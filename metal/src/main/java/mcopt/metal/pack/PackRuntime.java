@@ -36,19 +36,25 @@ public final class PackRuntime {
 			return;
 		}
 		Path gameDir = gameDir();
+		Path dumpDir = clean(gameDir.resolve("logs").resolve("mcopt-pack"));
 		IrisPack.Loaded pack;
 		try {
 			Optional<IrisPack.Loaded> loaded = IrisPack.load(gameDir);
 			if (loaded.isEmpty()) {
-				Log.info("[mcopt] pack: no shader pack selected (shaderPack= in config/iris.properties, or enableShaders=false)");
+				String why = "no shader pack selected (shaderPack= in config/iris.properties, or enableShaders=false)";
+				Log.info("[mcopt] pack: " + why);
+				summary(dumpDir, why);
 				return;
 			}
 			pack = loaded.get();
 		} catch (Throwable t) {
 			Log.warn("[mcopt] pack: can't read the selected shader pack", t);
+			java.io.StringWriter trace = new java.io.StringWriter();
+			t.printStackTrace(new java.io.PrintWriter(trace));
+			summary(dumpDir, "can't read the selected shader pack:\n" + trace);
 			return;
 		}
-		Thread worker = new Thread(() -> check(ctx, pack, gameDir.resolve("logs").resolve("mcopt-pack")), "mcopt pack check");
+		Thread worker = new Thread(() -> check(ctx, pack, dumpDir), "mcopt pack check");
 		worker.setDaemon(true);
 		worker.setPriority(Thread.MIN_PRIORITY);
 		worker.start();
@@ -67,7 +73,6 @@ public final class PackRuntime {
 		long t0 = System.nanoTime();
 		int programs = 0, stages = 0, compiled = 0, unsupported = 0;
 		List<String> failures = new ArrayList<>();
-		dumpDir = clean(dumpDir);
 		try (MslTranslator translator = new MslTranslator()) {
 			for (PackProgram program : pack.programs()) {
 				programs++;
@@ -75,7 +80,9 @@ public final class PackRuntime {
 				try {
 					glsl = program.patch();
 				} catch (Throwable t) {
-					failures.add(program.name() + ": Iris patch: " + message(t));
+					String why = "Iris patch: " + message(t);
+					failures.add(program.name() + ": " + why);
+					dump(dumpDir, program.name(), "", null, why);
 					continue;
 				}
 				for (Map.Entry<String, String> stage : glsl.entrySet()) {
@@ -100,12 +107,14 @@ public final class PackRuntime {
 			}
 		} catch (Throwable t) {
 			Log.warn("[mcopt] pack: the translator couldn't start (shaderc or SPIRV-Cross missing?)", t);
+			summary(dumpDir, "the translator couldn't start: " + message(t));
 			return;
 		}
 		long ms = (System.nanoTime() - t0) / 1_000_000;
-		Log.info(String.format("[mcopt] pack: \"%s\": %d programs, %d of %d shader stages compiled for Metal (%d need geometry/tessellation), %d failed, %.1f s%s",
-			pack.name(), programs, compiled, stages, unsupported, stages - compiled - unsupported, ms / 1000.0,
-			failures.isEmpty() ? "" : "; details in " + dumpDir));
+		String line = String.format("\"%s\": %d programs, %d of %d shader stages compiled for Metal (%d need geometry/tessellation), %d failed, %.1f s",
+			pack.name(), programs, compiled, stages, unsupported, stages - compiled - unsupported, ms / 1000.0);
+		Log.info("[mcopt] pack: " + line + (failures.isEmpty() ? "" : "; details in " + dumpDir));
+		summary(dumpDir, line + "\n\n" + String.join("\n", failures));
 		int shown = 0;
 		for (String f : failures) {
 			if (shown++ == 40) {
@@ -133,6 +142,16 @@ public final class PackRuntime {
 			return dir;
 		} catch (IOException e) {
 			return null;
+		}
+	}
+
+	/** logs/mcopt-pack/summary.txt: the check's result line and every failure, or why there was no check. */
+	private static void summary(Path dir, String text) {
+		if (dir == null) return;
+		try {
+			Files.writeString(dir.resolve("summary.txt"), text + "\n");
+		} catch (IOException e) {
+			// the log has the same lines
 		}
 	}
 

@@ -23,6 +23,7 @@ import net.irisshaders.iris.gl.shader.StandardMacros;
 import net.irisshaders.iris.gl.state.ShaderAttributeInputs;
 import net.irisshaders.iris.gl.texture.TextureType;
 import net.irisshaders.iris.helpers.Tri;
+import net.irisshaders.iris.platform.IrisPlatformHelpers;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.pipeline.transform.TransformPatcher;
 import net.irisshaders.iris.shaderpack.DimensionId;
@@ -52,7 +53,7 @@ final class IrisPack {
 
 	/** The selected pack, or empty when Iris has none selected or shaders are off in iris.properties. */
 	static Optional<Loaded> load(Path gameDir) throws IOException, ReflectiveOperationException {
-		irisConfig(gameDir);
+		irisState(gameDir);
 		Properties iris = properties(gameDir.resolve("config").resolve("iris.properties"));
 		String name = iris.getProperty("shaderPack", "").trim();
 		if (name.isEmpty() || "false".equals(iris.getProperty("enableShaders"))) return Optional.empty();
@@ -80,10 +81,15 @@ final class IrisPack {
 	}
 
 	/**
-	 * Iris's config, which its pack reader consults (debug options in IdMap, ShaderProperties, IncludeGraph). Iris creates it
-	 * in onEarlyInitialize, which one of its mixins calls: inert, it never runs, so it is created here the same way.
+	 * The parts of Iris's state its pack reader consults, which Iris sets in onEarlyInitialize. One of its mixins calls
+	 * that, so inert it never runs; they are set here the same way: the config (debug options in IdMap, ShaderProperties,
+	 * IncludeGraph) and the version (the IRIS_VERSION_* defines, alpha.12: "Could not parse semantic Iris version from
+	 * \"Version info unknown!\"").
 	 */
-	private static void irisConfig(Path gameDir) throws IOException, ReflectiveOperationException {
+	private static void irisState(Path gameDir) throws IOException, ReflectiveOperationException {
+		java.lang.reflect.Field version = Iris.class.getDeclaredField("IRIS_VERSION");
+		version.setAccessible(true);
+		if (version.get(null) == null) version.set(null, IrisPlatformHelpers.getInstance().getVersion());
 		if (Iris.getIrisConfig() != null) return;
 		Path dir = gameDir.resolve("config");
 		IrisConfig config = new IrisConfig(dir.resolve("iris.properties"), dir.resolve("iris-excluded.json"));
