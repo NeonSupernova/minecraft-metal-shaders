@@ -163,7 +163,7 @@ public final class DynLights {
 				state = DynLightNative.create(ctx, MemoryUtil.memAddress(src), BYTES, RING, Math.max(1, DynLightConfig.VOLUMES), Occupancy.BYTES, IRR_X, IRR_Y, IRR_Z, err, 4096);
 				if (state == 0) throw new IllegalStateException(MemoryUtil.memUTF8(err));
 				flood = DynLightNative.hasFlood(state);
-				if (!flood) System.out.println("[mcopt] shade: dynamic lights: no flood fill pipeline, rays only (mcopt.shade.dynLights.soft has no effect)");
+				if (!flood) mcopt.metal.Log.info("[mcopt] shade: dynamic lights: no flood fill pipeline, rays only (mcopt.shade.dynLights.soft has no effect)");
 			} finally {
 				MemoryUtil.memFree(src);
 			}
@@ -176,13 +176,12 @@ public final class DynLights {
 		} catch (Throwable e) {
 			failed = true;
 			state = 0;
-			System.out.println("[mcopt] shade: dynamic lights failed to start, off: " + e);
-			e.printStackTrace();
+			mcopt.metal.Log.warn("[mcopt] shade: dynamic lights failed to start, off", e);
 			// the shaders still declare the module's slots: bind zeroed stand-ins (no lights) rather than nothing
 			try {
 				fallback = DynLightNative.fallback(ctx, BYTES);
 			} catch (Throwable f) {
-				System.out.println("[mcopt] shade: dynamic lights fallback bindings failed too: " + f);
+				mcopt.metal.Log.warn("[mcopt] shade: dynamic lights fallback bindings failed too", f);
 			}
 			return false;
 		}

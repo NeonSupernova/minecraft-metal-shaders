@@ -177,7 +177,7 @@ final class LodNoise {
 				fp.setAccessible(true);
 				picker = (Aquifer.FluidPicker) ((java.util.function.Supplier<?>) fp.get(nb)).get();
 			} catch (ReflectiveOperationException | RuntimeException e) {
-				System.out.println("mcopt-lod: no fluid picker (" + e + "): water by sea level");
+				mcopt.metal.Log.warn("mcopt-lod: no fluid picker; far-terrain water follows sea level", e);
 			}
 		}
 		this.aquifers = picker != null ? aq : null;

@@ -228,7 +228,7 @@ public final class ShadeFrameUpdater {
 
 		if (!warnedOit && mc.gameRenderer.useImprovedTransparency()) {
 			warnedOit = true; // Sodium's OIT pipelines aren't shaded (M2): water and glass then keep vanilla's light
-			System.out.println("[mcopt] shade: Improved Transparency is on; translucent blocks are not shaded with it (turn it off for shaders)");
+			mcopt.metal.Log.warn("[mcopt] shade: Improved Transparency is on; translucent blocks are not shaded with it (turn it off for shaders)");
 		}
 		f.debug = Shade.DEBUG;
 		f.frameIndex++;

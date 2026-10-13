@@ -163,7 +163,7 @@ public final class ShadeTaa {
 			if (hdrInput && TaaConfig.DEBUG != 0) System.out.println("[mcopt] shade: mcopt.shade.taaDebug=" + TaaConfig.DEBUG + " ignored: its views exist only without HDR (mcopt.shade.hdr=false)");
 		} catch (Throwable e) {
 			failed = true;
-			System.out.println("[mcopt] shade: TAA setup failed, rendering without it: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: TAA setup failed, rendering without it", e);
 		} finally {
 			MemoryUtil.memFree(source);
 		}

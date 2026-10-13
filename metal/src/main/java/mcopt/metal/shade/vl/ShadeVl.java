@@ -145,8 +145,7 @@ public final class ShadeVl {
 
 	private static void fail(Throwable t) {
 		failed = true;
-		System.out.println("[mcopt] shade: volumetric light failed, off from now on: " + t);
-		t.printStackTrace();
+		mcopt.metal.Log.warn("[mcopt] shade: volumetric light failed, off from now on", t);
 	}
 
 	/** The native state, made on first use for the HDR or the LDR composite (the pipeline doesn't switch mid-session). */
@@ -273,7 +272,7 @@ public final class ShadeVl {
 			}
 		} catch (Throwable t) {
 			failed = true;
-			System.out.println("[mcopt] shade: volumetric light off: " + t);
+			mcopt.metal.Log.warn("[mcopt] shade: volumetric light off", t);
 			return false;
 		}
 	}

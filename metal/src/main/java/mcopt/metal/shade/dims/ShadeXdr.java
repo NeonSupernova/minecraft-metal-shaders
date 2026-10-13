@@ -86,7 +86,7 @@ public final class ShadeXdr {
 				+ ", EDR screen " + can + ", this screen's potential headroom " + potential + (frameGen ? ", frame generation: off" : "") + ")");
 		} catch (Throwable t) {
 			on = false;
-			System.out.println("[mcopt] shade: XDR output unavailable: " + t);
+			mcopt.metal.Log.warn("[mcopt] shade: XDR output unavailable", t);
 		}
 	}
 
@@ -102,7 +102,7 @@ public final class ShadeXdr {
 			try {
 				if ((int) isOn.invokeExact() == 0) {
 					on = false;
-					System.out.println("[mcopt] shade: XDR output off (the EDR present pipelines could not be built)");
+					mcopt.metal.Log.warn("[mcopt] shade: XDR output off (the EDR present pipelines could not be built)");
 				}
 			} catch (Throwable t) {
 				on = false;

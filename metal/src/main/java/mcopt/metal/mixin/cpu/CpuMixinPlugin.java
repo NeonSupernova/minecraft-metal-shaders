@@ -33,7 +33,7 @@ public final class CpuMixinPlugin implements IMixinConfigPlugin {
 	/** A @Redirect fails at startup when another mod redirects the same call: step aside then (MixinConflicts). */
 	private static boolean yields(String name, String owner, String call) {
 		String mod = mcopt.metal.MixinConflicts.hookedBy(owner, call);
-		if (mod != null) System.out.println("mcopt-cpu: " + name + " not applied: " + mod + " has a mixin into " + owner + " that names " + call);
+		if (mod != null) mcopt.metal.Log.info("mcopt-cpu: " + name + " not applied: " + mod + " has a mixin into " + owner + " that names " + call);
 		return mod != null;
 	}
 

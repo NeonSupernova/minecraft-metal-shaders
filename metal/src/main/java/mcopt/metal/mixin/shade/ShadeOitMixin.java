@@ -34,7 +34,7 @@ abstract class ShadeOitMixin {
 		if ("false".equals(System.getProperty("mcopt.shade.oitOff"))) return;
 		if (!mcopt$logged && net.minecraft.client.Minecraft.getInstance().options.improvedTransparency().get()) {
 			mcopt$logged = true;
-			System.out.println("[mcopt] shade: Improved Transparency is on in the video settings: kept off while the shaders run (they draw water, glass and rain"
+			mcopt.metal.Log.warn("[mcopt] shade: Improved Transparency is on in the video settings: kept off while the shaders run (they draw water, glass and rain"
 				+ " themselves; -Dmcopt.shade.oitOff=false uses it anyway)");
 		}
 		cir.setReturnValue(false);

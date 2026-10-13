@@ -35,7 +35,7 @@ abstract class DhRenderApiMixin {
 				Class<?> e = Class.forName("com.seibel.distanthorizons.api.enums.config.EDhApiRenderingApi", false, this.getClass().getClassLoader());
 				for (Object c : e.getEnumConstants()) if (((Enum<?>) c).name().equals("VULKAN")) api = c;
 			} catch (Throwable t) {
-				System.out.println("[mcopt] compat: Distant Horizons render-API check left unchanged: " + t);
+				mcopt.metal.Log.warn("[mcopt] compat: Distant Horizons render-API check left unchanged", t);
 				return;
 			}
 			if (api == null) return;

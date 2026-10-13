@@ -155,7 +155,7 @@ final class Native {
 			Files.move(tmp, lib, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 			return lib;
 		} catch (IOException | RuntimeException e) {
-			System.out.println("[mcopt] libmcmetal cache unavailable (" + e + "); using a temp copy");
+			Log.warn("[mcopt] can't use ~/Library/Caches/mcopt for the native library; loading a temp copy instead (works the same, written every launch)", e);
 		}
 		try {
 			Path dir = Files.createTempDirectory("mcmetal");

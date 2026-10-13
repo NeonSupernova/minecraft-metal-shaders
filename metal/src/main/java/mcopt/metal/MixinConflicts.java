@@ -76,11 +76,11 @@ public final class MixinConflicts {
 					}
 				}
 			} catch (RuntimeException | IOException e) {
-				System.out.println("[mcopt] mixin conflicts: skipped " + id + " (" + e + ")");
+				Log.warn("[mcopt] mixin conflicts: could not read " + id + "'s mixin configs; its mixins are not checked against our Sodium speed-ups (if the game then fails to start naming " + id + ", set mcopt.chunk.mesh=none in config/mcopt.properties)", e);
 			}
 		}
-		System.out.printf("[mcopt] mixin conflicts: %d mixin classes read, %d touch Sodium (%.0f ms)%n", classes, out.size(),
-			(System.nanoTime() - start) / 1e6);
+		Log.info(String.format("[mcopt] mixin conflicts: %d mixin classes of other mods read, %d touch Sodium (%.0f ms)", classes, out.size(),
+			(System.nanoTime() - start) / 1e6));
 		return out;
 	}
 

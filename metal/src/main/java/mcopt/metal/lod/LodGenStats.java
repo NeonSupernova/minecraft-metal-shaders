@@ -88,7 +88,7 @@ final class LodGenStats {
 				+ LodYield.pausedNow() + "\n");
 			if (frames % 600 == 1) csv.flush();
 		} catch (IOException e) {
-			System.out.println("mcopt-lod: chunkLag: " + e);
+			mcopt.metal.Log.warn("mcopt-lod: can't write the chunkLag log (-Dmcopt.lod.chunkLag)", e);
 		}
 	}
 

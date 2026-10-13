@@ -262,8 +262,7 @@ public final class ShadowPass {
 		failed = true;
 		ShadowPass p = instance;
 		if (p != null) p.prepared = false;
-		System.out.println("[mcopt] shade: shadow pass disabled after an error: " + e);
-		e.printStackTrace(System.out);
+		mcopt.metal.Log.warn("[mcopt] shade: shadow pass disabled after an error", e);
 	}
 
 	// ---- implementation ----
@@ -463,7 +462,7 @@ public final class ShadowPass {
 					CASCADES * (ShadowConfig.DEPTH_BITS / 8.0) * ShadowConfig.RES * ShadowConfig.RES / (1 << 20)));
 			} else {
 				this.spreadFailed = true; // keep M3.2's way: the bound far map stays as it is this frame
-				System.out.println("[mcopt] shade: far cascade spread off: no memory for the second map");
+				mcopt.metal.Log.warn("[mcopt] shade: far cascade spread off: no memory for the second map");
 				this.farMode = 0;
 				this.draw[1] = false;
 				this.backPart = -1;
@@ -719,7 +718,7 @@ public final class ShadowPass {
 					this.tintMap = ShadowNative.tintTexture(this.shadow);
 					System.out.println("[mcopt] shade: coloured shadows " + mcopt.metal.shade.weather.ShadeWeather.COLOR_SHADOW_RES + "^2 (near cascade)");
 				} else {
-					System.out.println("[mcopt] shade: no coloured shadows: " + MemoryUtil.memUTF8(err));
+					mcopt.metal.Log.warn("[mcopt] shade: no coloured shadows: " + MemoryUtil.memUTF8(err));
 				}
 			}
 		}

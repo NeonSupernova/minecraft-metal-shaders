@@ -92,7 +92,7 @@ public final class ShadeClouds {
 			System.out.println("[mcopt] shade clouds: Distant Horizons' own clouds " + (ours ? "off (ours draw)" : "back to its setting"));
 		} catch (Throwable t) {
 			dhApiFailed = true;
-			System.out.println("[mcopt] shade clouds: could not switch Distant Horizons' clouds (" + t + "); set Clouds off in DH's settings");
+			mcopt.metal.Log.warn("[mcopt] shade clouds: could not turn off Distant Horizons' clouds; set Clouds off in DH's settings to avoid doubled clouds", t);
 		}
 	}
 
@@ -257,8 +257,7 @@ public final class ShadeClouds {
 		} catch (Throwable t) {
 			failed = true;
 			active = false;
-			System.out.println("[mcopt] shade: clouds failed, vanilla clouds from now on: " + t);
-			t.printStackTrace();
+			mcopt.metal.Log.warn("[mcopt] shade: clouds failed, vanilla clouds from now on", t);
 			PARAMS.packLook(look, false);
 		}
 	}
@@ -270,7 +269,7 @@ public final class ShadeClouds {
 			// without world depth are taken as far terrain behind the clouds (mode 1)
 			CloudNative.over(c.enc(), state, c.scene(), c.depth(), c.width(), c.height(), DH && ShadePost.bridgedThisFrame() ? 1 : 0);
 		} catch (Throwable t) {
-			System.out.println("[mcopt] shade: clouds over the world failed: " + t);
+			mcopt.metal.Log.warn("[mcopt] shade: clouds over the world failed", t);
 			over = false;
 		}
 	}
@@ -283,7 +282,7 @@ public final class ShadeClouds {
 			long s = mcopt.metal.shade.ShadeRobust.failCompile("clouds") ? 0 : CloudNative.create(ctx, MemoryUtil.memAddress(src), err, ERR); // M3.3: dev-only injected failure
 			if (s == 0) {
 				failed = true;
-				System.out.println("[mcopt] shade: clouds setup failed, vanilla clouds: " + MemoryUtil.memUTF8(err));
+				mcopt.metal.Log.warn("[mcopt] shade: clouds setup failed, vanilla clouds: " + MemoryUtil.memUTF8(err));
 				return false;
 			}
 			state = s;

@@ -46,7 +46,7 @@ public final class ChunkMixinPlugin implements IMixinConfigPlugin {
 		if (!ChunkOpt.mixinEnabled(name)) return false;
 		for (String mod : YIELDS_TO.getOrDefault(name, List.of())) {
 			if (FabricLoader.getInstance().isModLoaded(mod)) {
-				System.out.println("mcopt-chunk: " + name + " not applied: " + mod + " is loaded");
+				mcopt.metal.Log.info("mcopt-chunk: " + name + " not applied: " + mod + " is loaded");
 				return false;
 			}
 		}
@@ -54,7 +54,7 @@ public final class ChunkMixinPlugin implements IMixinConfigPlugin {
 		if (target != null) {
 			String mod = mcopt.metal.MixinConflicts.hookedBy(target.get(0), target.subList(1, target.size()).toArray(String[]::new));
 			if (mod != null) {
-				System.out.println("mcopt-chunk: " + name + " not applied: " + mod + " has a mixin into " + target.get(0) + "." + target.get(1));
+				mcopt.metal.Log.info("mcopt-chunk: " + name + " not applied: " + mod + " has a mixin into " + target.get(0) + "." + target.get(1));
 				return false;
 			}
 		}

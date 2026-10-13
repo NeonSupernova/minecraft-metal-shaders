@@ -173,7 +173,7 @@ public final class ShadeOutput {
 			Files.createDirectories(file.getParent());
 			Files.write(file, lines, StandardCharsets.UTF_8);
 		} catch (IOException e) {
-			System.out.println("[mcopt] shade: could not save the output resolution choice: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: could not save the output resolution choice", e);
 		}
 	}
 }

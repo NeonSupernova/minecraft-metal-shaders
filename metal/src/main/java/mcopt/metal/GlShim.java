@@ -35,21 +35,21 @@ final class GlShim {
 			SDLVideo.SDL_GL_SetAttribute(SDLVideo.SDL_GL_CONTEXT_FLAGS, SDLVideo.SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 			long window = SDLVideo.SDL_CreateWindow("mcopt GL shim", 1, 1, SDLVideo.SDL_WINDOW_OPENGL | SDLVideo.SDL_WINDOW_HIDDEN);
 			if (window == 0) {
-				System.out.println("[mcopt] gl-shim: no hidden window (" + SDLError.SDL_GetError() + "); mods calling OpenGL may abort the game");
+				Log.warn("[mcopt] gl-shim: no hidden window (" + SDLError.SDL_GetError() + "); mods calling OpenGL may abort the game");
 				return;
 			}
 			long context = SDLVideo.SDL_GL_CreateContext(window);
 			if (context == 0 || !SDLVideo.SDL_GL_MakeCurrent(window, context)) {
-				System.out.println("[mcopt] gl-shim: no OpenGL context (" + SDLError.SDL_GetError() + "); mods calling OpenGL may abort the game");
+				Log.warn("[mcopt] gl-shim: no OpenGL context (" + SDLError.SDL_GetError() + "); mods calling OpenGL may abort the game");
 				SDLVideo.SDL_DestroyWindow(window);
 				return;
 			}
 			GL.createCapabilities();
-			System.out.println("[mcopt] gl-shim: hidden OpenGL context current on " + Thread.currentThread().getName()
+			Log.info("[mcopt] gl-shim: hidden OpenGL context current on " + Thread.currentThread().getName()
 				+ " for mods that query OpenGL (-Dmcopt.glShim=false turns it off)");
 		} catch (Throwable t) {
 			done = true;
-			System.out.println("[mcopt] gl-shim: " + t);
+			Log.warn("[mcopt] gl-shim: no hidden OpenGL context, so a mod that calls OpenGL at startup can abort the game (-Dmcopt.glShim=false skips this step)", t);
 		}
 	}
 }

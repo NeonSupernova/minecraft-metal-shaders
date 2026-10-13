@@ -103,7 +103,7 @@ public final class Profile {
 			try (Reader r = Files.newBufferedReader(cfg, StandardCharsets.UTF_8)) {
 				file.load(r);
 			} catch (IOException e) {
-				System.out.println("[mcopt] profile: can't read " + cfg + ": " + e);
+				Log.warn("[mcopt] profile: can't read " + cfg, e);
 			}
 		}
 		String name = System.getProperty("mcopt.profile", file.getProperty("profile", "")).trim();
@@ -114,7 +114,7 @@ public final class Profile {
 				try (Reader r = Files.newBufferedReader(cfg, StandardCharsets.UTF_8)) {
 					file.load(r);
 				} catch (IOException e) {
-					System.out.println("[mcopt] profile: can't read " + cfg + ": " + e);
+					Log.warn("[mcopt] profile: can't read " + cfg, e);
 				}
 			}
 		}
@@ -123,12 +123,12 @@ public final class Profile {
 			Properties p = new Properties();
 			try (InputStream in = Profile.class.getResourceAsStream("/mcopt/profiles/" + name + ".properties")) {
 				if (in == null) {
-					System.out.println("[mcopt] profile: no profile named '" + name + "' (ignored)");
+					Log.warn("[mcopt] profile: no profile named '" + name + "' (from profile= in config/mcopt.properties or -Dmcopt.profile); use alpha, recommended or none. No profile applied");
 				} else {
 					p.load(in);
 				}
 			} catch (IOException e) {
-				System.out.println("[mcopt] profile " + name + ": " + e);
+				Log.warn("[mcopt] profile: can't read profile '" + name + "' from the mod jar; no profile applied", e);
 			}
 			p.stringPropertyNames().forEach(k -> flags.put(k, p.getProperty(k).trim()));
 			if (name.equals("alpha")) tier(flags);
@@ -208,7 +208,7 @@ public final class Profile {
 			Files.writeString(cfg, text, StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE);
 			System.out.println("[mcopt] profile: wrote " + cfg + " (profile=" + name + ")");
 		} catch (IOException e) {
-			System.out.println("[mcopt] profile: can't write " + cfg + ": " + e);
+			Log.warn("[mcopt] profile: can't write " + cfg, e);
 		}
 	}
 

@@ -131,7 +131,7 @@ public final class ShadeDh {
 			apply(FADE, shading ? named(fadeEnum, "mcopt.shade.dh.fade", "dh") : null);
 			if (shading && DIRECT && !warnedFade && "DOUBLE_PASS".equals(String.valueOf(getTrue.invoke(FADE.entry)))) {
 				warnedFade = true;
-				System.out.println("[mcopt] shade dh: WARNING: Distant Horizons' vanilla fade is DOUBLE_PASS, which hides the near world with mcopt-shade's"
+				mcopt.metal.Log.warn("[mcopt] shade dh: Distant Horizons' vanilla fade is DOUBLE_PASS, which hides the near world with mcopt-shade's"
 					+ " direct composite. Set it to SINGLE_PASS or NONE (DH settings > Graphics > Quality > Vanilla fade) and restart the game.");
 			}
 			apply(FOG, shading && LIGHT ? off("mcopt.shade.dh.fog") : null);
@@ -206,6 +206,6 @@ public final class ShadeDh {
 
 	private static void fail(Throwable t) {
 		failed = true;
-		System.out.println("[mcopt] shade dh: could not switch Distant Horizons' settings (" + t + "); its own settings stay");
+		mcopt.metal.Log.warn("[mcopt] shade dh: could not switch Distant Horizons' settings; its own settings stay", t);
 	}
 }

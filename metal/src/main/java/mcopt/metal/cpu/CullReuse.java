@@ -196,8 +196,7 @@ public final class CullReuse {
 				skippable = reason == OK;
 			} catch (RuntimeException e) {
 				broken = true;
-				System.out.println("mcopt-cpu: cullReuse disabled after " + e);
-				e.printStackTrace(System.out);
+				mcopt.metal.Log.warn("mcopt-cpu: cull reuse off after an error; Sodium culls every frame as without it", e);
 			}
 		}
 		if (skippable && Cpu.CULL_SKIP) {

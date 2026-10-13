@@ -57,7 +57,7 @@ public final class ShadeRobust {
 		if ("false".equals(System.getProperty("mcopt.shade.robustFallback"))) return;
 		postFailed = true;
 		System.setProperty("mcopt.shade.clouds.pause", "true");
-		System.out.println("[mcopt] shade: no HDR post chain: volumetric clouds off, vanilla clouds instead");
+		mcopt.metal.Log.warn("[mcopt] shade: no HDR post chain: volumetric clouds off, vanilla clouds instead");
 	}
 
 	/**
@@ -71,7 +71,7 @@ public final class ShadeRobust {
 		if (!ok) {
 			skyFailed = true;
 			System.setProperty("mcopt.shade.clouds.pause", "true");
-			System.out.println("[mcopt] shade: the shaded sky did not build: volumetric clouds off, vanilla clouds instead");
+			mcopt.metal.Log.warn("[mcopt] shade: the shaded sky did not build: volumetric clouds off, vanilla clouds instead");
 		} else if (skyFailed) {
 			skyFailed = false;
 			if (!postFailed) System.clearProperty("mcopt.shade.clouds.pause");
