@@ -1210,8 +1210,8 @@ static void startDisplayLink(void) {
 // paced for the wrong grid judder or miss refreshes. Checked every 30 paced frames from the render thread (the main thread
 // on macOS, so AppKit may be asked); a move retargets the display link, whose next callback brings the new grid.
 
-// The screen the game's window is on (nil before the window exists). Main thread only (AppKit); autoreleased.
-static NSScreen *windowScreen(void) {
+// The game's window (nil before it exists). Main thread only (AppKit).
+static NSWindow *gameWindow(void) {
 	if (!paceLayer) return nil;
 	id d = paceLayer.delegate;
 	NSWindow *w = d && [d isKindOfClass:[NSView class]] ? ((NSView *) d).window : nil;
@@ -1219,7 +1219,21 @@ static NSScreen *windowScreen(void) {
 		id dd = l.delegate;
 		if (dd && [dd isKindOfClass:[NSView class]]) w = ((NSView *) dd).window;
 	}
-	return w.screen;
+	return w;
+}
+
+// The screen the game's window is on (nil before the window exists). Main thread only.
+static NSScreen *windowScreen(void) {
+	return gameWindow().screen;
+}
+
+// 1 when no part of the game's window can be seen (covered by other windows, on another Space, minimized, or the display
+// asleep), 0 when some of it can or it is unknown. Main thread only.
+int mc_window_occluded(void) {
+	@autoreleasepool {
+		NSWindow *w = gameWindow();
+		return w && !(w.occlusionState & NSWindowOcclusionStateVisible) ? 1 : 0;
+	}
 }
 
 static void followDisplay(void) {

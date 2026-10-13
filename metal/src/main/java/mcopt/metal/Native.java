@@ -118,6 +118,7 @@ final class Native {
 	private static final MethodHandle PACE_EXTRA_MS = fn("mc_pace_extra_ms", false, JAVA_DOUBLE);
 	private static final MethodHandle PACE = fn("mc_pace", false, JAVA_INT, JAVA_DOUBLE);
 	private static final MethodHandle REFRESH_HZ = fn("mc_refresh_hz", false, JAVA_DOUBLE);
+	private static final MethodHandle WINDOW_OCCLUDED = fn("mc_window_occluded", false, JAVA_INT);
 	private static final MethodHandle SLEEP_PRECISE = fn("mc_sleep_precise", false, null, JAVA_LONG);
 	private static final MethodHandle PROBE = fn("mc_probe", false, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_INT, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG,
 		JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT);
@@ -292,6 +293,7 @@ final class Native {
 	static double paceExtraMs() { try { return (double) PACE_EXTRA_MS.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static long presentDropped() { try { return (long) PRESENT_DROPPED.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static void sleepPrecise(long ns) { try { SLEEP_PRECISE.invokeExact(ns); } catch (Throwable t) { throw rethrow(t); } }
+	static boolean windowOccluded() { try { return (int) WINDOW_OCCLUDED.invokeExact() != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static double refreshHz() { try { return (double) REFRESH_HZ.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static boolean pace(double marginSeconds) { try { return (int) PACE.invokeExact(marginSeconds) != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static int probe(long ctx, long draws, int count, int totalQuads, long globals, long globalsOffset, long atlas, long atlasSampler, int width, int height,

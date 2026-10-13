@@ -68,6 +68,7 @@ final class MetalSurface implements GpuSurfaceBackend {
 	public void blitFromTexture(CommandEncoderBackend commandEncoder, GpuTextureView textureView) {
 		// mcopt.rec hook: the opt-in recorder (-Dmcopt.rec, mcopt.metal.rec) takes the finished frame, GUI included. Rec.ON is a constant false without it.
 		if (mcopt.metal.rec.Rec.ON) mcopt.metal.rec.Rec.frame(this.encoder, textureView);
+		Occlusion.throttle();
 		FrameGen frameGen = FrameGen.ENABLED ? FrameGen.get(this.encoder) : null;
 		if (frameGen != null) {
 			frameGen.frame(textureView, this.layer);
