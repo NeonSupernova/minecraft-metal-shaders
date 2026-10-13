@@ -77,7 +77,7 @@ jobs:
           # declares: 0 until the runner has a macOS 27 SDK), Java
           xcodebuild -version | sed -n 1p # sed reads it all: head closing the pipe early crashes xcodebuild
           sdk=$(xcrun --sdk macosx --show-sdk-path)
-          n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers 2>/dev/null | wc -l | tr -d ' ')
+          n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers/ 2>/dev/null | wc -l | tr -d ' ')
           echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version), $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
           java -version 2>&1 | head -1
 
@@ -114,15 +114,15 @@ jobs:
           sdk=$(xcrun --sdk macosx --show-sdk-path)
           echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
           for f in Metal MetalFX QuartzCore; do
-            h="$sdk/System/Library/Frameworks/$f.framework/Headers"
+            h="$sdk/System/Library/Frameworks/$f.framework/Headers/" # trailing /: Headers is a symlink, which BSD grep -r won't enter
             # every macOS availability version the headers use (whatever macro spells it), newest last
             echo "$f availability: $(grep -rhoE 'macos(x)?\(?[ ,]*[0-9]+(\.[0-9]+)*' "$h" 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)*$' | sort -V | uniq -c | tail -6 | tr -s ' \n' ' ')"
             echo "::group::$f: declarations newer than macOS 26"
-            grep -rnE -B3 'macos(x)?[ ,(]*(2[7-9]|[3-9][0-9])(\.[0-9]+)*' "$h" 2>/dev/null | sed "s|$h/||" | head -400
+            grep -rnE -B3 'macos(x)?[ ,(]*(2[7-9]|[3-9][0-9])(\.[0-9]+)*' "$h" 2>/dev/null | sed "s|$h||" | head -400
             echo "::endgroup::"
           done
-          # Metal's header list with sizes and dates: a header newer than the rest is where new API landed
-          ls -la "$sdk/System/Library/Frameworks/Metal.framework/Headers" | head -80
+          # Metal's header list with sizes and dates: newest first: where new API landed
+          ls -lat "$sdk/System/Library/Frameworks/Metal.framework/Headers/" | head -40
 
       - name: Native library against the macOS 27 SDK
         run: |
