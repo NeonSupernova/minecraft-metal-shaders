@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
  * Each chunk mixin applies only when its -Dmcopt.chunk.* switch is set (ChunkOpt.mixinEnabled), so by default nothing changes.
  * Mixins that rewrite methods other optimization mods also rewrite step aside when such a mod is loaded (that mod's version of
  * the optimization then applies): Lithium (POI scans, random ticks, chunk access), ScalableLux (the light engine), C2ME (chunk
- * IO, serialization, chunk access).
+ * IO, serialization, chunk access), Polytone (Sodium's block renderer).
  */
 public final class ChunkMixinPlugin implements IMixinConfigPlugin {
 	static {
@@ -26,7 +26,10 @@ public final class ChunkMixinPlugin implements IMixinConfigPlugin {
 		"DataLayerStorageMapMixin", List.of("scalablelux"),
 		"BlockLightMapMixin", List.of("scalablelux"),
 		"SkyLightMapMixin", List.of("scalablelux"),
-		"PalettedContainerFactoryMixin", List.of("c2me"));
+		"PalettedContainerFactoryMixin", List.of("c2me"),
+		// BlockRendererMixin @Overwrites BlockRenderer.renderModel, which removes the injection point Polytone's
+		// SodiumBlockRendererMixin targets (fatal: "Mod polytone ... cannot be used together with mod metal-shaders")
+		"BlockRendererMixin", List.of("polytone"));
 
 	@Override public void onLoad(String mixinPackage) { }
 	@Override public String getRefMapperConfig() { return null; }
