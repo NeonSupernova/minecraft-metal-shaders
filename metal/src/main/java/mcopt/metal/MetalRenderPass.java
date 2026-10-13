@@ -297,15 +297,21 @@ final class MetalRenderPass implements RenderPassBackend {
 				GpuBufferSlice slice = (GpuBufferSlice) value;
 				var format = Objects.requireNonNull(uniform.gpuFormat());
 				long view = TexelViews.ON && TexelViews.active ? TexelViews.get(this.encoder, slice, MetalConst.pixelFormat(format), format.blockSize()) // opt-in
-					: this.texelViews.computeIfAbsent(slice, s -> {
-					long handle = Native.textureBuffer(this.encoder.ctx, this.encoder.use(s.buffer()).handle, MetalConst.pixelFormat(format), s.offset(),
-						s.length(), format.blockSize());
-					this.encoder.releaseLater(handle);
-					return handle;
-				});
+					: this.texelView(slice, format);
 				Native.texture(this.enc, i, view, 0);
 			}
 		}
+	}
+
+	/** This pass's texel view of slice, made at its first bind (a lookup, not computeIfAbsent: no capturing lambda per bind). */
+	private long texelView(GpuBufferSlice slice, com.mojang.renderpearl.api.GpuFormat format) {
+		Long view = this.texelViews.get(slice);
+		if (view != null) return view;
+		long handle = Native.textureBuffer(this.encoder.ctx, this.encoder.use(slice.buffer()).handle, MetalConst.pixelFormat(format), slice.offset(),
+			slice.length(), format.blockSize());
+		this.encoder.releaseLater(handle);
+		this.texelViews.put(slice, handle);
+		return handle;
 	}
 
 	@Override
