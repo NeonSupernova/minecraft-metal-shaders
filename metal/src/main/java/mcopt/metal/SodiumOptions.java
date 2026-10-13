@@ -72,6 +72,17 @@ public final class SodiumOptions implements ConfigEntryPoint {
 			.setStorageHandler(() -> {})
 			.setBinding(v -> ConfigFile.set("mcopt.shade", Boolean.toString(v)), () -> bool("mcopt.shade", true));
 
+		BooleanOptionBuilder packs = b.createBooleanOption(id("packs"))
+			.setName(text("Iris Shader Packs on Metal"))
+			.setTooltip(text("Experimental. With Iris installed, keeps the Metal renderer instead of switching to OpenGL, and checks that "
+				+ "the pack selected in Iris translates to Metal (the log reports how many of its shaders compile). Packs are not drawn "
+				+ "yet: this is the first step of running them on Metal."))
+			.setImpact(OptionImpact.HIGH)
+			.setFlags(OptionFlag.REQUIRES_GAME_RESTART)
+			.setDefaultValue(false)
+			.setStorageHandler(() -> {})
+			.setBinding(v -> ConfigFile.set("mcopt.pack", Boolean.toString(v)), () -> bool("mcopt.pack", false));
+
 		EnumOptionBuilder<Preset> preset = b.createEnumOption(id("preset"), Preset.class)
 			.setName(text("Shader Quality"))
 			.setTooltip(text("Performance and Balanced hold the display's refresh rate with dynamic resolution; Quality and Ultra trade frame rate for sharpness and effects."))
@@ -171,7 +182,7 @@ public final class SodiumOptions implements ConfigEntryPoint {
 			.setName("Metal Shaders")
 			.addPage(b.createOptionPage()
 				.setName(text("Metal Shaders"))
-				.addOptionGroup(b.createOptionGroup().setName(text("Renderer")).addOption(metal).addOption(shaders))
+				.addOptionGroup(b.createOptionGroup().setName(text("Renderer")).addOption(metal).addOption(shaders).addOption(packs))
 				.addOptionGroup(b.createOptionGroup().setName(text("Shaders")).addOption(preset).addOption(look).addOption(resolution))
 				.addOptionGroup(b.createOptionGroup().setName(text("Frame Rate")).addOption(frameGen).addOption(vsyncCap).addOption(powerCap).addOption(hiddenFps))
 				.addOptionGroup(b.createOptionGroup().setName(text("Advanced")).addOption(f3).addOption(profile)));

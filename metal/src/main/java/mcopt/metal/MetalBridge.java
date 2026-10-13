@@ -39,6 +39,29 @@ public final class MetalBridge {
 		}
 	}
 
+	/**
+	 * Compiles MSL source into a Metal library (MSL 3.0, as the backend's own shaders). Returns the library handle (release
+	 * with {@link #release}), or throws with the Metal compiler's message.
+	 */
+	public static long compileLibrary(long ctx, String msl) {
+		try (MemoryStack stack = MemoryStack.stackPush()) {
+			java.nio.ByteBuffer source = MemoryUtil.memUTF8(msl);
+			try {
+				long err = stack.nmalloc(1, 4096);
+				MemoryUtil.memPutByte(err, (byte) 0);
+				long lib = Native.libraryNew(ctx, MemoryUtil.memAddress(source), err, 4096);
+				if (lib == 0) throw new IllegalStateException(MemoryUtil.memUTF8(err));
+				return lib;
+			} finally {
+				MemoryUtil.memFree(source);
+			}
+		}
+	}
+
+	public static void release(long object) {
+		Native.release(object);
+	}
+
 	/** A native encoder for headless checks; commitAndWait submits what was recorded and waits for the GPU. */
 	public static long createHeadlessEncoder(long ctx) {
 		return Native.encNew(ctx);

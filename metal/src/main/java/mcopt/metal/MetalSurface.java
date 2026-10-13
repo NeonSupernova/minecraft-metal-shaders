@@ -43,6 +43,7 @@ final class MetalSurface implements GpuSurfaceBackend {
 		this.view = SDLMetal.SDL_Metal_CreateView(window);
 		this.layer = SDLMetal.SDL_Metal_GetLayer(this.view);
 		StyleGuard.install();
+		mcopt.metal.pack.PackRuntime.start(ctx);
 	}
 
 	@Override
