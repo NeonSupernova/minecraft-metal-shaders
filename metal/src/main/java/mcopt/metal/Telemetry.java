@@ -33,8 +33,24 @@ public final class Telemetry {
 	private static boolean overBudget;
 	/** For the crash report (any thread): the device line and the last tick line. */
 	private static volatile String device = "not created", lastTick = "none yet";
+	/** At device close: one line for the whole session, to compare runs, settings and versions without reading every tick. */
+	static void end() {
+		if (sessionSeconds <= 0) return;
+		try {
+			Log.info(String.format("[mcopt] session: %.0f min, %.0f fps average over %d frames, worst 1%% low %.0f fps, peak GPU memory %.2f GB of %.1f GB, "
+					+ "%.0f%% of the time thermally throttled", (System.nanoTime() - sessionStartNs) / 6e10, sessionFrames / sessionSeconds, sessionFrames,
+				worstLow == Float.MAX_VALUE ? 0 : worstLow, gb(peakAllocated), gb(workingSet), 100 * hotNs / 1e9 / sessionSeconds));
+		} catch (Throwable t) {
+			Log.warn("[mcopt] telemetry: no session summary", t);
+		}
+	}
+
 	/** F3's Metal line (MetalDebugMixin), from the last tick; null until the first one. */
 	private static volatile String f3;
+	/** Whole-session totals for the summary at exit. */
+	private static long sessionFrames, sessionStartNs, peakAllocated, hotNs;
+	private static double sessionSeconds;
+	private static float worstLow = Float.MAX_VALUE;
 
 	private Telemetry() {
 	}
@@ -42,6 +58,7 @@ public final class Telemetry {
 	/** Once, when the Metal device exists: the startup report. */
 	static void start(long context, String deviceName) {
 		ctx = context;
+		sessionStartNs = System.nanoTime();
 		device = deviceName;
 		try {
 			workingSet = Native.workingSet(context);
@@ -96,6 +113,11 @@ public final class Telemetry {
 					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
 				lastTick = line.substring("[mcopt tick] ".length());
+				sessionFrames += n;
+				sessionSeconds += seconds;
+				peakAllocated = Math.max(peakAllocated, allocated);
+				worstLow = Math.min(worstLow, 1000 / Math.max(p99, 0.001f));
+				if ((power & 0xff) >= 2) hotNs += now - tickStartNs;
 				f3 = String.format("Metal: %s | wait %.2f ms | VRAM %.2f/%.1f GB%s | %s", gpus > 0 ? String.format("GPU %.1f ms (p99 %.1f)",
 						pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "GPU n/a", waitNs / 1e6 / n, gb(allocated), gb(workingSet),
 					hz > 0 ? String.format(" | %.0f Hz", hz) : "", thermal(power) + ((power & 0x100) != 0 ? ", low power" : ""));
