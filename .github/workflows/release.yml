@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v1.0-alpha.5 and this builds the mod on an Apple Silicon runner (the native Metal
+# Push a tag like v1.0.0-alpha.7 (semantic versioning: vMAJOR.MINOR.PATCH, optional -alpha.N / -beta.N / -rc.N) and this builds the mod on an Apple Silicon runner (the native Metal
 # library needs clang + the macOS SDK) and publishes metal-shaders-<version>.jar as a GitHub release.
 # If the release already exists (e.g. you made it in the GitHub UI, which also creates the tag), the jar is attached to it.
 # Run it by hand (Actions -> Release -> Run workflow) to get a test build as a workflow artifact, no release; fill in
@@ -34,7 +34,16 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
           tag="${INPUT_TAG:-}"; [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
-          if [ -n "$tag" ]; then v="${tag#v}"; else v="dev-$(git rev-parse --short HEAD)"; fi
+          if [ -n "$tag" ]; then
+            v="${tag#v}"
+            # semver 2.0: MAJOR.MINOR.PATCH with an optional dot-separated pre-release, e.g. 1.0.0-alpha.7, 1.2.3-rc.1, 1.2.3
+            if ! printf '%s' "$tag" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'; then
+              echo "::error::Tag '$tag' is not a semantic version. Use vMAJOR.MINOR.PATCH[-prerelease], e.g. v1.0.0-alpha.7 or v1.0.1."
+              exit 1
+            fi
+          else
+            v="0.0.0-dev.$(git rev-parse --short HEAD)"
+          fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # the jar and fabric.mod.json carry the release version, not upstream mcopt's
