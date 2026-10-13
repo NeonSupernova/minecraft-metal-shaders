@@ -58,10 +58,6 @@ public final class MetalBridge {
 		}
 	}
 
-	public static void release(long object) {
-		Native.release(object);
-	}
-
 	/** A native encoder for headless checks; commitAndWait submits what was recorded and waits for the GPU. */
 	public static long createHeadlessEncoder(long ctx) {
 		return Native.encNew(ctx);
