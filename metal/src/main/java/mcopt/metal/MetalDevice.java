@@ -65,6 +65,10 @@ final class MetalDevice implements GpuDeviceBackend {
 		// -Dmcopt.metal.cbdiag=MS: stall diagnostics on stderr (big buffer allocations, slow command buffers); see mcmetal.m.
 		String diag = System.getProperty("mcopt.metal.cbdiag");
 		if (diag != null) Native.diagEnable(Double.parseDouble(diag));
+		// macOS latency-critical activity (mcmetal.m mc_latency_activity): no App Nap, no timer coalescing; -Dmcopt.latencyActivity=false skips it.
+		if (Boolean.parseBoolean(System.getProperty("mcopt.latencyActivity", "true")) && !Native.latencyActivity()) {
+			System.out.println("[mcopt] macOS refused latency-critical scheduling; frame pacing may jitter when the window is covered");
+		}
 		if (mcopt.metal.cpu.Cpu.PASS || mcopt.metal.cpu.Cpu.CMD_AHEAD) Native.cpuFlags(mcopt.metal.cpu.Cpu.nativeFlags(mcopt.metal.cpu.Cpu.PASS)); // opt-in: see mc_cpu_flags
 	}
 

@@ -711,6 +711,20 @@ static int sameTargets(Enc *enc, int count, id<MTLTexture> const *colors, const 
 // (Metal copies the descriptor when it makes the encoder).
 static int cpuPass;
 
+// The game asks macOS for latency-critical scheduling while the Metal backend runs: no App Nap (which throttles timers and
+// the render thread when the window is covered or behind another app), and the highest timer and I/O precision the
+// system offers (no timer coalescing, so the frame pacer's waits end on time). Idle system sleep stays allowed, so a
+// paused game doesn't keep the Mac awake. Held for the life of the process; returns 0 if macOS refused it.
+int mc_latency_activity(void) {
+	static id token;
+	if (token) return 1;
+	@autoreleasepool {
+		token = [[[NSProcessInfo processInfo] beginActivityWithOptions:NSActivityUserInitiatedAllowingIdleSystemSleep | NSActivityLatencyCritical
+			reason:@"Minecraft is rendering with Metal"] retain];
+	}
+	return token != nil;
+}
+
 void mc_cpu_flags(int flags) {
 	cpuPass = flags & 1;
 	cpuAhead = flags >> 1 & 1;
