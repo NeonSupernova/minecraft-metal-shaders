@@ -5,6 +5,7 @@ plugins {
 version = '0.2.0-alpha.3'
 
 repositories {
+	mavenCentral() // JUnit (tests only)
 	// Sodium at build time only (compileOnly): mcopt hooks into it at runtime and never bundles it.
 	maven {
 		url = 'https://api.modrinth.com/maven'
@@ -16,6 +17,14 @@ dependencies {
 	minecraft "com.mojang:minecraft:${minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${loader_version}"
 	compileOnly "maven.modrinth:sodium:${sodium_version}"
+	// pure-logic tests (no game, no Metal), run by `build` on CI
+	testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+	testRuntimeOnly "maven.modrinth:sodium:${sodium_version}" // SodiumCompatTest reads its classes
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+test {
+	useJUnitPlatform()
 }
 
 def nativeOut = layout.buildDirectory.dir('natives/natives')

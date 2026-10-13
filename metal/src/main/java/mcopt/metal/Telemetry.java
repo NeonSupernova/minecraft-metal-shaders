@@ -24,13 +24,33 @@ public final class Telemetry {
 	public static final boolean ON = TICK_S > 0;
 	private static final int RING = 1 << 13;
 	private static final float[] frameMs = new float[RING], gpuMs = new float[RING], scratch = new float[RING];
-	private static int frames, gpus;
+	private static int frames, gpus, presents;
 	private static long lastSubmitNs, tickStartNs, waitNs;
 	private static long ctx;
 	private static long workingSet;
 	private static int power = -1;
 	/** GPU memory was over the budget at the last tick: the warning is logged on crossing it, not every tick. */
 	private static boolean overBudget;
+	/** For the crash report (any thread): the device line and the last tick line. */
+	private static volatile String device = "not created", lastTick = "none yet";
+	/** At device close: one line for the whole session, to compare runs, settings and versions without reading every tick. */
+	static void end() {
+		if (sessionSeconds <= 0) return;
+		try {
+			Log.info(String.format("[mcopt] session: %.0f min, %.0f fps average over %d frames, worst 1%% low %.0f fps, peak GPU memory %.2f GB of %.1f GB, "
+					+ "%.0f%% of the time thermally throttled", (System.nanoTime() - sessionStartNs) / 6e10, sessionFrames / sessionSeconds, sessionFrames,
+				worstLow == Float.MAX_VALUE ? 0 : worstLow, gb(peakAllocated), gb(workingSet), 100 * hotNs / 1e9 / sessionSeconds));
+		} catch (Throwable t) {
+			Log.warn("[mcopt] telemetry: no session summary", t);
+		}
+	}
+
+	/** F3's Metal line (MetalDebugMixin), from the last tick; null until the first one. */
+	private static volatile String f3;
+	/** Whole-session totals for the summary at exit. */
+	private static long sessionFrames, sessionStartNs, peakAllocated, hotNs;
+	private static double sessionSeconds;
+	private static float worstLow = Float.MAX_VALUE;
 
 	private Telemetry() {
 	}
@@ -38,6 +58,8 @@ public final class Telemetry {
 	/** Once, when the Metal device exists: the startup report. */
 	static void start(long context, String deviceName) {
 		ctx = context;
+		sessionStartNs = System.nanoTime();
+		device = deviceName;
 		try {
 			workingSet = Native.workingSet(context);
 			Runtime rt = Runtime.getRuntime();
@@ -68,6 +90,11 @@ public final class Telemetry {
 		if (now - tickStartNs >= TICK_S * 1_000_000_000L) tick(now);
 	}
 
+	/** A frame went to the screen (the pacer kept it); frames minus presents were rendered and dropped. */
+	static void presented() {
+		presents++;
+	}
+
 	/** A frame's command buffer completed: its GPU start and end (seconds, 0 when unknown), and how long the render thread waited for it. */
 	static void retired(double gpuStart, double gpuEnd, long waitedNs) {
 		if (gpuStart > 0 && gpuEnd > gpuStart && gpus < RING) gpuMs[gpus++] = (float) ((gpuEnd - gpuStart) * 1e3);
@@ -84,10 +111,22 @@ public final class Telemetry {
 				String gpu = gpus > 0 ? String.format("gpu p50 %.1f ms p99 %.1f", pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "gpu n/a";
 				Runtime rt = Runtime.getRuntime();
 				long allocated = Native.deviceAllocated(ctx);
-				Log.info(String.format("[mcopt tick] %.0f fps (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
+				double hz = Native.refreshHz();
+				String line;
+				String shown = presents > 0 && presents < n ? String.format(", %.0f shown, the rest dropped by the pacer", presents / seconds) : "";
+				Log.info(line = String.format("[mcopt tick] %.0f fps%s%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
 						+ " | GPU memory %.2f GB of %.1f GB | heap %.1f/%.1f GB | %s | %s",
-					n / seconds, 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
+					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", shown, 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
+				lastTick = line.substring("[mcopt tick] ".length());
+				sessionFrames += n;
+				sessionSeconds += seconds;
+				peakAllocated = Math.max(peakAllocated, allocated);
+				worstLow = Math.min(worstLow, 1000 / Math.max(p99, 0.001f));
+				if ((power & 0xff) >= 2) hotNs += now - tickStartNs;
+				f3 = String.format("Metal: %s | wait %.2f ms | VRAM %.2f/%.1f GB%s | %s", gpus > 0 ? String.format("GPU %.1f ms (p99 %.1f)",
+						pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "GPU n/a", waitNs / 1e6 / n, gb(allocated), gb(workingSet),
+					hz > 0 ? String.format(" | %.0f Hz", hz) : "", thermal(power) + ((power & 0x100) != 0 ? ", low power" : ""));
 				boolean over = workingSet > 0 && allocated > workingSet;
 				if (over && !overBudget) {
 					Log.warn(String.format("[mcopt] GPU memory %.2f GB is over macOS's %.1f GB budget: expect stutter from paging; lower the shader preset or render distance",
@@ -100,9 +139,36 @@ public final class Telemetry {
 		} catch (Throwable t) {
 			Log.warnOnce("telemetry tick", "[mcopt] telemetry: a tick line failed", t);
 		}
-		frames = gpus = 0;
+		frames = gpus = presents = 0;
 		waitNs = 0;
 		tickStartNs = now;
+	}
+
+	/** F3's Metal line, null before the first tick (or with mcopt.log.tick=0). */
+	public static String f3Line() {
+		return f3;
+	}
+
+	/**
+	 * The crash report's "Metal Shaders" section: what was rendering and how it was doing, so a report alone is enough to
+	 * tell a Metal problem from a mod conflict, a Sodium mismatch, memory pressure or a throttled machine. Any thread; never throws.
+	 */
+	public static String report() {
+		StringBuilder b = new StringBuilder();
+		try {
+			b.append("\n\t\tDevice: ").append(device).append(String.format(", GPU memory budget %.1f GB", gb(workingSet)));
+			b.append("\n\t\tProfile: ").append(Profile.active).append("; shaders ").append(Boolean.getBoolean("mcopt.shade") ? "on" : "off")
+				.append(" (preset ").append(System.getProperty("mcopt.shade.preset", "balanced")).append("); frame generation ")
+				.append(FrameGen.ENABLED ? "on" : "off");
+			b.append("\n\t\tSodium: ").append(SodiumCompat.status());
+			String conflicts = MixinConflicts.found();
+			b.append("\n\t\tYielded to other mods: ").append(conflicts.isEmpty() ? "none" : conflicts);
+			b.append("\n\t\tPower: ").append(power < 0 ? "unknown" : thermal(power) + ((power & 0x100) != 0 ? ", Low Power Mode" : ""));
+			b.append("\n\t\tLast tick: ").append(lastTick);
+		} catch (Throwable t) {
+			b.append("\n\t\t(incomplete: ").append(t).append(')');
+		}
+		return b.toString();
 	}
 
 	/** Logs a thermal or Low Power Mode change as it happens. */

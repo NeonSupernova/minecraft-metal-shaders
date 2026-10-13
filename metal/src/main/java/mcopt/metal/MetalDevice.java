@@ -174,6 +174,7 @@ final class MetalDevice implements GpuDeviceBackend {
 
 	@Override
 	public void close() {
+		Telemetry.end();
 		this.encoder.waitIdle();
 	}
 

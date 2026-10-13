@@ -33,7 +33,15 @@ public final class MixinConflicts {
 	private record Entry(String modId, byte[] bytes) {
 	}
 
+	/** Every conflict found (for the crash report): "owner by modId". */
+	private static final java.util.Set<String> FOUND = new java.util.LinkedHashSet<>();
+
 	private MixinConflicts() {
+	}
+
+	/** The conflicts found so far, "" when none. */
+	public static synchronized String found() {
+		return String.join(", ", FOUND);
 	}
 
 	/**
@@ -47,7 +55,10 @@ public final class MixinConflicts {
 		for (Entry e : index) {
 			if (indexOf(e.bytes, internal) < 0 && indexOf(e.bytes, dotted) < 0) continue;
 			for (String m : methods) {
-				if (indexOf(e.bytes, m.getBytes(StandardCharsets.UTF_8)) >= 0) return e.modId;
+				if (indexOf(e.bytes, m.getBytes(StandardCharsets.UTF_8)) >= 0) {
+					FOUND.add(owner.substring(owner.lastIndexOf('.') + 1) + "." + m + " by " + e.modId);
+					return e.modId;
+				}
 			}
 		}
 		return null;

@@ -7,6 +7,8 @@
 #import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/CABase.h>
 #include <mach/mach_time.h>
+#include <objc/message.h>
+#include <simd/simd.h>
 #include <math.h>
 #include <os/lock.h>
 #include <pthread.h>
@@ -125,6 +127,10 @@ typedef struct {
 	id<MTLTexture> color[2];  // the last two level images (current = this frame's once captured)
 	id<MTLTexture> depth, motion, out;
 	int width, height, current;
+	// -Dmcopt.metal.framegen.matrices: the camera's matrices for MetalFX (macOS 27 worldToViewMatrix / viewToClipMatrix),
+	// set by mcf_camera_matrices; hasMatrices 0 until then
+	simd_float4x4 worldToView, viewToClip;
+	int hasMatrices;
 } Fg;
 
 // ---- display timing: a display link on the main display (host time = CACurrentMediaTime's clock) ----
@@ -421,6 +427,17 @@ void mcf_capture(Enc *enc, Fg *fg, id<MTLTexture> color, id<MTLTexture> hand) {
 	[c endEncoding];
 }
 
+// The camera's world-to-view and view-to-clip matrices (column-major float[16] each) for the next mcf_interpolate. Returns
+// 1 if this MetalFX takes them (macOS 27), else 0 and they are ignored.
+int mcf_camera_matrices(Fg *fg, const float *view, const float *clip) {
+	if (!fg->interpolator || ![fg->interpolator respondsToSelector:@selector(setWorldToViewMatrix:)]
+		|| ![fg->interpolator respondsToSelector:@selector(setViewToClipMatrix:)]) return 0;
+	memcpy(&fg->worldToView, view, sizeof fg->worldToView);
+	memcpy(&fg->viewToClip, clip, sizeof fg->viewToClip);
+	fg->hasMatrices = 1;
+	return 1;
+}
+
 // The frame halfway between the previous level image and this one, into fg->out. camera: near, far, vertical field of
 // view in degrees, aspect ratio; dt: seconds between the two real frames. Returns the slot of its check (mcf_check_counts).
 int mcf_interpolate(Enc *enc, Fg *fg, float dt, float near, float far, float fov, float aspect, int reset) {
@@ -441,6 +458,12 @@ int mcf_interpolate(Enc *enc, Fg *fg, float dt, float near, float far, float fov
 		fi.jitterOffsetX = fi.jitterOffsetY = 0;
 		fi.depthReversed = YES;
 		fi.shouldResetHistory = reset != 0;
+		if (fg->hasMatrices) {
+			// macOS 27's setters, sent by selector (respondsToSelector checked in mcf_camera_matrices) so this builds on the
+			// macOS 26 SDK too
+			((void (*)(id, SEL, simd_float4x4)) objc_msgSend)(fi, @selector(setWorldToViewMatrix:), fg->worldToView);
+			((void (*)(id, SEL, simd_float4x4)) objc_msgSend)(fi, @selector(setViewToClipMatrix:), fg->viewToClip);
+		}
 		id<MTLCommandBuffer> cb = mc_frame_cmd(enc);
 		[fi encodeToCommandBuffer:cb];
 		// Did MetalFX interpolate, or give back the newer frame?

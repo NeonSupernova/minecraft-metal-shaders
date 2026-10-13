@@ -59,8 +59,9 @@ public final class DynamicResolution {
 	private static final double HOLD_FIXED = TaaConfig.clamp(floatProp("mcopt.shade.drsFixed", 0.5f), 0f, 0.9f);
 
 	private final float min, max;
-	private final int fps;
-	private final double targetSeconds;
+	private final int baseFps;
+	private int fps;
+	private double targetSeconds;
 	private float scale;
 	private double average, lastEnd;
 	private int samples, sinceChange, skip, pinned;
@@ -73,8 +74,30 @@ public final class DynamicResolution {
 		this.min = min;
 		this.max = max;
 		this.scale = TaaConfig.clamp(start, min, max);
+		this.baseFps = fps;
 		this.fps = fps;
 		this.targetSeconds = 0.86 / fps;
+	}
+
+	/** The preset's frame rate target (or mcopt.shade.drsFps). */
+	public int baseFps() {
+		return this.baseFps;
+	}
+
+	public int fps() {
+		return this.fps;
+	}
+
+	/**
+	 * Retargets the controller (the display's refresh changed, or frame generation halves the real frames): frames beyond
+	 * what the display shows buy nothing, so the scale is spent on resolution instead. Keeps the timing history: the next
+	 * update simply compares it with the new budget.
+	 */
+	public void setFps(int fps) {
+		if (fps == this.fps || fps <= 0) return;
+		this.fps = fps;
+		this.targetSeconds = 0.86 / fps;
+		this.pinned = 0;
 	}
 
 	/** M3.3: the hold controller is on (mcopt.shade.drsHold, read every frame: bench A/B in one session; false = M3.2's). */

@@ -113,9 +113,13 @@ Settings live in `config/mcopt.properties` in your game folder (written on the f
 | `mcopt.shade.preset` | `performance`, `balanced`, `quality`, `ultra` | `balanced` |
 | `mcopt.shade.look` | `epic`, `storybook`, `natural` | `epic` |
 | `mcopt.log.tick` | seconds between performance lines in the log (fps, 1% low, frame/GPU ms, GPU memory, thermal state); `0` = off | `5` |
+| `mcopt.f3` | `false` hides the **Metal** line on F3 (GPU ms, GPU wait, GPU memory, refresh rate, thermal state) | `true` |
+| `mcopt.occludedFps` | frame rate while the game window is fully hidden (covered, another Space); `0` = no limit | `15` |
+| `mcopt.powerCap` | while macOS reports thermal throttling or Low Power Mode, cap frames just above the display's refresh (the rest would be dropped unseen) | `true` |
+| `mcopt.shade.drsFps` | frame rate dynamic resolution holds; unset = the preset's, capped at the display's refresh (half with frame generation) | unset |
 | `mcopt.shade.output` | `native`, `1440`, `1200`, `1080`, `900` (also the **Output** button in the pause menu) | `native` |
 
-For the most FPS: Video Settings → VSync off, Max Framerate unlimited. To see your FPS, press **F3**.
+For the most FPS: Video Settings → VSync off, Max Framerate unlimited. To see your FPS, press **F3**. Crash reports carry a **Metal Shaders** section (device, Sodium compatibility, conflicts, last performance line): attach the whole report when you file an issue.
 
 **Distant Horizons** (optional): add Distant Horizons 3.3.4 for 26.3 and Fabric API to the mods folder. It runs on Metal
 too, and its far terrain is lit by the same shaders (DH's own SSAO, anti-aliasing and fog are turned off while they run).

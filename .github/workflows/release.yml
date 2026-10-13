@@ -75,9 +75,9 @@ jobs:
         run: |
           # what builds this jar: Xcode, the macOS SDK the native library compiles against (and how many macOS 27 Metal APIs it
           # declares: 0 until the runner has a macOS 27 SDK), Java
-          xcodebuild -version | head -1
+          xcodebuild -version | sed -n 1p # sed reads it all: head closing the pipe early crashes xcodebuild
           sdk=$(xcrun --sdk macosx --show-sdk-path)
-          n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers 2>/dev/null | wc -l | tr -d ' ')
+          n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers/ 2>/dev/null | wc -l | tr -d ' ')
           echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version), $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
           java -version 2>&1 | head -1
 
@@ -90,12 +90,47 @@ jobs:
           cp "metal/build/libs/metal-${{ steps.v.outputs.modversion }}.jar" "dist/${{ steps.v.outputs.asset }}"
           ls -l dist
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.v.outputs.asset }}
-          path: dist/*.jar
-          compression-level: 0 # a jar is already a zip
+          # the jar itself, not zipped: the run page's download is the mod file, ready for the mods folder
+          path: dist/${{ steps.v.outputs.asset }}
+          archive: false
           retention-days: 30
+
+  sdk27:
+    # macOS 27 SDK preview (GitHub's xcode-27 image): lists the Metal, MetalFX and QuartzCore APIs new in macOS 27 and
+    # compiles the native library against that SDK, so new APIs can be adopted (behind @available) before the default
+    # runner moves. Informational: never blocks a build or a release.
+    if: github.event_name != 'push'
+    runs-on: xcode-27
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: macOS 27 APIs
+        run: |
+          xcodebuild -version | sed -n 1p
+          sdk=$(xcrun --sdk macosx --show-sdk-path)
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+          for f in Metal MetalFX QuartzCore; do
+            h="$sdk/System/Library/Frameworks/$f.framework/Headers/" # trailing /: Headers is a symlink, which BSD grep -r won't enter
+            # every macOS availability version the headers use (whatever macro spells it), newest last
+            echo "$f availability: $(grep -rhoE 'macos(x)?\(?[ ,]*[0-9]+(\.[0-9]+)*' "$h" 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+)*$' | sort -V | uniq -c | tail -6 | tr -s ' \n' ' ')"
+            echo "::group::$f: declarations newer than macOS 26"
+            grep -rnE -B3 'macos(x)?[ ,(]*(2[7-9]|[3-9][0-9])(\.[0-9]+)*' "$h" 2>/dev/null | sed "s|$h||" | head -400
+            echo "::endgroup::"
+          done
+          # Metal's header list with sizes and dates: newest first: where new API landed
+          ls -lat "$sdk/System/Library/Frameworks/Metal.framework/Headers/" | head -40
+
+      - name: Native library against the macOS 27 SDK
+        run: |
+          cd metal/src/main/native
+          clang -fno-objc-arc -O2 -Wall -arch arm64 -mmacosx-version-min=15.0 -dynamiclib -install_name @rpath/libmcmetal.dylib \
+            -framework AppKit -framework CoreGraphics -framework CoreVideo -framework Foundation -framework Metal -framework MetalFX -framework QuartzCore \
+            -o "$RUNNER_TEMP/libmcmetal.dylib" mcmetal.m mcterrain.m mcprobe.m mcframegen.m mclod.m lodseam.m lodmesh.c lodnoise.c rec.m mcshade.m mcshadow.m mcwater.m mcvl.m mctaa.m mcdynlight.m mcxdr.m mcclouds.m
+          ls -l "$RUNNER_TEMP/libmcmetal.dylib"
 
   publish:
     needs: build
@@ -105,7 +140,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.asset }}
           path: dist
@@ -116,8 +151,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build.outputs.tag }}
           VERSION: ${{ needs.build.outputs.version }}
-          ASSET: dist/${{ needs.build.outputs.asset }}
+          ASSET_NAME: ${{ needs.build.outputs.asset }}
         run: |
+          # the jar wherever download-artifact put it (a direct upload is a single file, not a zip)
+          ASSET=$(find dist -name "$ASSET_NAME" -type f | head -1); [ -n "$ASSET" ] || ASSET=$(find dist -name "*.jar" -type f | head -1)
+          [ -n "$ASSET" ] || { echo "::error::$ASSET_NAME not in the downloaded artifact"; ls -lR dist; exit 1; }
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ASSET" --clobber
           else
