@@ -2,11 +2,17 @@ name: Release
 
 # Push a tag like v1.0-alpha.5 and this builds the mod on an Apple Silicon runner (the native Metal
 # library needs clang + the macOS SDK) and publishes metal-shaders-<version>.jar as a GitHub release.
-# Run it by hand (Actions -> Release -> Run workflow) to get a test build as a workflow artifact, no release.
+# If the release already exists (e.g. you made it in the GitHub UI, which also creates the tag), the jar is attached to it.
+# Run it by hand (Actions -> Release -> Run workflow) to get a test build as a workflow artifact, no release; fill in
+# "tag" to also attach the jar to that existing release.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach the jar to (leave empty for a test build only)
+        required: false
 
 permissions:
   contents: write
@@ -24,9 +30,13 @@ jobs:
 
       - name: Version
         id: v
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="dev-$(git rev-parse --short HEAD)"; fi
+          tag="${INPUT_TAG:-}"; [ -z "$tag" ] && [ "$GITHUB_REF_TYPE" = tag ] && tag="$GITHUB_REF_NAME"
+          if [ -n "$tag" ]; then v="${tag#v}"; else v="dev-$(git rev-parse --short HEAD)"; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # the jar and fabric.mod.json carry the release version, not upstream mcopt's
           sed -i '' "s/^version = '.*'$/version = '$v'/" metal/build.gradle
 
@@ -46,12 +56,17 @@ jobs:
           path: dist/*.jar
 
       - name: Publish release
-        if: github.ref_type == 'tag'
+        if: steps.v.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.v.outputs.tag }}
         run: |
           v='${{ steps.v.outputs.version }}'
-          pre=""; case "$v" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
-          gh release create "$GITHUB_REF_NAME" "dist/metal-shaders-$v.jar" \
-            --title "Metal Shaders $v" --generate-notes $pre \
-            --notes "Needs Sodium 0.9.2 for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "dist/metal-shaders-$v.jar" --clobber
+          else
+            pre=""; case "$v" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
+            gh release create "$TAG" "dist/metal-shaders-$v.jar" \
+              --title "Metal Shaders $v" --generate-notes $pre \
+              --notes "Needs Sodium 0.9.2 for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."
+          fi
