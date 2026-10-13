@@ -29,6 +29,8 @@ public final class Telemetry {
 	private static long ctx;
 	private static long workingSet;
 	private static int power = -1;
+	/** GPU memory was over the budget at the last tick: the warning is logged on crossing it, not every tick. */
+	private static boolean overBudget;
 
 	private Telemetry() {
 	}
@@ -86,10 +88,14 @@ public final class Telemetry {
 						+ " | GPU memory %.2f GB of %.1f GB | heap %.1f/%.1f GB | %s | %s",
 					n / seconds, 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
-				if (workingSet > 0 && allocated > workingSet) {
+				boolean over = workingSet > 0 && allocated > workingSet;
+				if (over && !overBudget) {
 					Log.warn(String.format("[mcopt] GPU memory %.2f GB is over macOS's %.1f GB budget: expect stutter from paging; lower the shader preset or render distance",
 						gb(allocated), gb(workingSet)));
+				} else if (!over && overBudget) {
+					Log.info(String.format("[mcopt] GPU memory back under the budget (%.2f GB of %.1f GB)", gb(allocated), gb(workingSet)));
 				}
+				overBudget = over;
 			}
 		} catch (Throwable t) {
 			Log.warnOnce("telemetry tick", "[mcopt] telemetry: a tick line failed", t);
