@@ -106,6 +106,20 @@ public final class ShadeResolution {
 		return ShadeLang.t("Resolución: ", "Resolution: ") + c + "p";
 	}
 
+	/** The current choice's position in the menu order (0 auto, 1 native, then 1800, 1600, 1440, 1200, 1080). */
+	public static int choice() {
+		return index;
+	}
+
+	/** Sets the choice by menu position (the settings screen), live, saved to config/mcopt.properties. */
+	public static void choose(int choice, Path gameDir) {
+		index = Math.clamp(choice, 0, CHOICES.length - 1);
+		int c = CHOICES[index];
+		String value = c == 0 ? "auto" : c < 0 ? "native" : Integer.toString(c);
+		System.setProperty("mcopt.shade.resolution", value);
+		save(gameDir.resolve("config").resolve("mcopt.properties"), value);
+	}
+
 	/** Next choice (the pause-menu button), saved to config/mcopt.properties. */
 	public static void cycle(Path gameDir) {
 		index = (index + 1) % CHOICES.length;
