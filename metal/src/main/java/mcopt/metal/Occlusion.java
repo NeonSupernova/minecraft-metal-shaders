@@ -15,11 +15,29 @@ package mcopt.metal;
 final class Occlusion {
 	private static final int FPS = Integer.getInteger("mcopt.occludedFps", 15);
 	private static final boolean POWER_CAP = Boolean.parseBoolean(System.getProperty("mcopt.powerCap", "true"));
+	/**
+	 * VSync on: frames are capped just above the refresh of the display the window is on. VSync shows one frame per
+	 * refresh, but on macOS a window on a slower external display (a 75 Hz monitor next to the 120 Hz panel) can still be
+	 * driven at the faster rate: alpha.9 rendered 119 fps on a 75 Hz monitor, 44 frames a second nobody saw.
+	 * -Dmcopt.vsyncCap=false turns it off.
+	 */
+	private static final boolean VSYNC_CAP = Boolean.parseBoolean(System.getProperty("mcopt.vsyncCap", "true"));
 	private static boolean hidden, failed, capped;
+	private static volatile boolean vsync;
+	private static String presentMode;
 	private static int frames;
 	private static long last;
 
 	private Occlusion() {
+	}
+
+	/** The surface's present mode (each configure); logged when it changes. */
+	static void present(boolean vsyncOn, boolean paced) {
+		vsync = vsyncOn;
+		String mode = vsyncOn ? "vsync on" + (VSYNC_CAP ? ", frames capped near the display's refresh" : "")
+			: paced ? "vsync off, paced (one frame per refresh reaches the screen)" : "vsync off, unpaced";
+		if (!mode.equals(presentMode)) Log.info("[mcopt] present: " + mode);
+		presentMode = mode;
 	}
 
 	/**
@@ -27,9 +45,12 @@ final class Occlusion {
 	 * refresh (an unsynchronised cap at exactly the refresh drifts against it and some refreshes would get no new frame; the
 	 * pacer still presents one per refresh), else none. Pure, for the tests.
 	 */
-	static int capFps(boolean hidden, int hiddenFps, boolean capped, double hz) {
+	static int capFps(boolean hidden, int hiddenFps, boolean capped, boolean vsyncCap, double hz) {
 		if (hidden && hiddenFps > 0) return hiddenFps;
-		return capped && hz > 0 ? (int) Math.round(hz * 1.2) : 0;
+		if (hz <= 0) return 0;
+		// vsync: a twentieth above the refresh, so a frame that comes in a little late still makes its refresh
+		if (vsyncCap) return (int) Math.round(hz * 1.05);
+		return capped ? (int) Math.round(hz * 1.2) : 0;
 	}
 
 	/** Before a frame is presented: waits out the rest of the frame interval when the window is hidden or the cap is on. */
@@ -62,7 +83,8 @@ final class Occlusion {
 			}
 		}
 		long t = System.nanoTime();
-		int fps = capFps(hidden, FPS, capped, capped && !hidden ? Display.refreshHz() : 0);
+		boolean vsyncCap = VSYNC_CAP && vsync;
+		int fps = capFps(hidden, FPS, capped, vsyncCap, (capped || vsyncCap) && !hidden ? Display.refreshHz() : 0);
 		if (fps > 0) {
 			long remaining = last + 1_000_000_000L / fps - t;
 			if (remaining > 0) FrameWait.sleep(remaining);
