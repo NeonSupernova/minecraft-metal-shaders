@@ -22,6 +22,16 @@ final class Occlusion {
 	private Occlusion() {
 	}
 
+	/**
+	 * The frame rate to hold, 0 = none: the hidden rate while hidden (when on), else with the power cap on a fifth above the
+	 * refresh (an unsynchronised cap at exactly the refresh drifts against it and some refreshes would get no new frame; the
+	 * pacer still presents one per refresh), else none. Pure, for the tests.
+	 */
+	static int capFps(boolean hidden, int hiddenFps, boolean capped, double hz) {
+		if (hidden && hiddenFps > 0) return hiddenFps;
+		return capped && hz > 0 ? (int) Math.round(hz * 1.2) : 0;
+	}
+
 	/** Before a frame is presented: waits out the rest of the frame interval when the window is hidden or the cap is on. */
 	static void throttle() {
 		if (failed) return;
@@ -52,10 +62,7 @@ final class Occlusion {
 			}
 		}
 		long t = System.nanoTime();
-		double hz = capped && !hidden ? Display.refreshHz() : 0;
-		// a fifth above the refresh: an unsynchronised cap at exactly the refresh drifts against it and some refreshes would
-		// get no new frame; the pacer still presents one per refresh
-		int fps = hidden ? FPS : hz > 0 ? (int) Math.round(hz * 1.2) : 0;
+		int fps = capFps(hidden, FPS, capped, capped && !hidden ? Display.refreshHz() : 0);
 		if (fps > 0) {
 			long remaining = last + 1_000_000_000L / fps - t;
 			if (remaining > 0) FrameWait.sleep(remaining);
