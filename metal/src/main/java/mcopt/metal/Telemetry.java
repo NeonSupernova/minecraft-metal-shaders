@@ -37,9 +37,9 @@ public final class Telemetry {
 	static void end() {
 		if (sessionSeconds <= 0) return;
 		try {
-			Log.info(String.format("[mcopt] session: %.0f min, %.0f fps average over %d frames, worst 1%% low %.0f fps, peak GPU memory %.2f GB of %.1f GB, "
+			Log.info(String.format("[mcopt] session: %.0f min, %.0f fps average over %d frames, worst 1%% low %s in play, peak GPU memory %.2f GB of %.1f GB, "
 					+ "%.0f%% of the time thermally throttled", (System.nanoTime() - sessionStartNs) / 6e10, sessionFrames / sessionSeconds, sessionFrames,
-				worstLow == Float.MAX_VALUE ? 0 : worstLow, gb(peakAllocated), gb(workingSet), 100 * hotNs / 1e9 / sessionSeconds));
+				worstLow == Float.MAX_VALUE ? "n/a" : String.format("%.0f fps", worstLow), gb(peakAllocated), gb(workingSet), 100 * hotNs / 1e9 / sessionSeconds));
 		} catch (Throwable t) {
 			Log.warn("[mcopt] telemetry: no session summary", t);
 		}
@@ -122,7 +122,8 @@ public final class Telemetry {
 				sessionFrames += n;
 				sessionSeconds += seconds;
 				peakAllocated = Math.max(peakAllocated, allocated);
-				worstLow = Math.min(worstLow, 1000 / Math.max(p99, 0.001f));
+				// gameplay only: no world, or a loading stall (a frame over a second, joining a world), would read as 0 fps
+				if (worst < 1000 && chunks().startsWith("chunks")) worstLow = Math.min(worstLow, 1000 / Math.max(p99, 0.001f));
 				if ((power & 0xff) >= 2) hotNs += now - tickStartNs;
 				f3 = String.format("Metal: %s | wait %.2f ms | VRAM %.2f/%.1f GB%s | %s", gpus > 0 ? String.format("GPU %.1f ms (p99 %.1f)",
 						pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "GPU n/a", waitNs / 1e6 / n, gb(allocated), gb(workingSet),
