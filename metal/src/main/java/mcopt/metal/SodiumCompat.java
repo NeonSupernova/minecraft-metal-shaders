@@ -49,6 +49,11 @@ public final class SodiumCompat {
 		Map.entry("MeshQosMixin", List.of("net/caffeinemc/mods/sodium/client/render/chunk/compile/executor/ChunkBuilder$WorkerRunnable", "run")),
 		Map.entry("SodiumFlatFaceShadeMixin", List.of("net/caffeinemc/mods/sodium/client/model/light/flat/FlatLightPipeline", "byFace", "getShade")),
 		Map.entry("SodiumSmoothFaceShadeMixin", List.of("net/caffeinemc/mods/sodium/client/model/light/smooth/SmoothLightPipeline", "byFace", "getAmbientBrightness")));
+	/** The hook table, for the tests (they check it against the Sodium jar the build compiles against). */
+	static Map<String, List<String>> hooks() {
+		return HOOKS;
+	}
+
 	/** Mixins that work only together (an accessor and the mixin that casts to it): one missing target turns off the group. */
 	private static final List<List<String>> GROUPS = List.of(
 		List.of("CullBiForestAccess", "CullMultiForestAccess", "CullNearbyMixin", "CullReuseManagerMixin", "CullSectionInfoMixin", "CullTaskTreeAccess", "CullTreeAccess"),

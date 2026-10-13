@@ -19,6 +19,7 @@ dependencies {
 	compileOnly "maven.modrinth:sodium:${sodium_version}"
 	// pure-logic tests (no game, no Metal), run by `build` on CI
 	testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+	testRuntimeOnly "maven.modrinth:sodium:${sodium_version}" // SodiumCompatTest reads its classes
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 }
 
