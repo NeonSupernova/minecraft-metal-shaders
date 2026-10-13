@@ -8,6 +8,7 @@
 #import <AppKit/AppKit.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/CABase.h>
+#import <objc/runtime.h>
 #include <mach/mach_time.h>
 #include <sys/event.h>
 #include <math.h>
@@ -1234,6 +1235,47 @@ int mc_window_occluded(void) {
 		NSWindow *w = gameWindow();
 		return w && !(w.occlusionState & NSWindowOcclusionStateVisible) ? 1 : 0;
 	}
+}
+
+// ---- window style guard ----
+// SDL leaves exclusive fullscreen with -[NSWindow setStyleMask:], and on macOS 27.2 that can throw (2026-10-13, Gael's
+// rig: twice, at quit and on a fullscreen change in Video Settings). The exception unwinds into the Java frames that
+// called SDL, which can't pass it, and the process aborts. Wrapped, it is caught and kept for the log (mc_style_guard_error):
+// the window keeps the style it had and the game keeps running. -Dmcopt.metal.styleGuard=false leaves NSWindow alone.
+static IMP styleMaskOriginal;
+static char styleMaskError[512];
+static _Atomic int styleMaskErrors;
+
+static void styleMaskGuarded(id self, SEL cmd, NSWindowStyleMask mask) {
+	NSWindowStyleMask before = ((NSWindow *) self).styleMask;
+	@try {
+		((void (*)(id, SEL, NSWindowStyleMask)) styleMaskOriginal)(self, cmd, mask);
+	} @catch (NSException *e) {
+		snprintf(styleMaskError, sizeof styleMaskError, "%s: %s (style mask 0x%lx -> 0x%lx)", e.name.UTF8String ?: "?",
+			e.reason.UTF8String ?: "?", (unsigned long) before, (unsigned long) mask);
+		atomic_fetch_add(&styleMaskErrors, 1);
+		fprintf(stderr, "mcopt-metal: -[NSWindow setStyleMask:] threw, window left as it was: %s\n", styleMaskError);
+	}
+}
+
+int mc_style_guard(void) {
+	static dispatch_once_t once;
+	static int installed;
+	dispatch_once(&once, ^{
+		Method m = class_getInstanceMethod([NSWindow class], @selector(setStyleMask:));
+		if (m) {
+			styleMaskOriginal = method_setImplementation(m, (IMP) styleMaskGuarded);
+			installed = 1;
+		}
+	});
+	return installed;
+}
+
+// How many setStyleMask: calls threw so far; the last one's message into out.
+int mc_style_guard_error(char *out, int cap) {
+	int n = atomic_load(&styleMaskErrors);
+	if (n > 0 && cap > 0) snprintf(out, (size_t) cap, "%s", styleMaskError);
+	return n;
 }
 
 static void followDisplay(void) {

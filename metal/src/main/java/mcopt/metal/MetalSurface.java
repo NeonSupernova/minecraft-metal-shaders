@@ -42,10 +42,12 @@ final class MetalSurface implements GpuSurfaceBackend {
 		this.encoder = encoder;
 		this.view = SDLMetal.SDL_Metal_CreateView(window);
 		this.layer = SDLMetal.SDL_Metal_GetLayer(this.view);
+		StyleGuard.install();
 	}
 
 	@Override
 	public void configure(GpuSurface.Configuration config) {
+		StyleGuard.report(); // a fullscreen change reconfigures the surface
 		boolean vsync = config.presentMode() == GpuSurface.PresentMode.FIFO;
 		// Frame generation schedules every present on the display's refresh grid, which needs vsync (FrameGen).
 		this.paced = !vsync && PACE && !FrameGen.ENABLED;
