@@ -24,7 +24,7 @@ public final class Telemetry {
 	public static final boolean ON = TICK_S > 0;
 	private static final int RING = 1 << 13;
 	private static final float[] frameMs = new float[RING], gpuMs = new float[RING], scratch = new float[RING];
-	private static int frames, gpus;
+	private static int frames, gpus, presents;
 	private static long lastSubmitNs, tickStartNs, waitNs;
 	private static long ctx;
 	private static long workingSet;
@@ -90,6 +90,11 @@ public final class Telemetry {
 		if (now - tickStartNs >= TICK_S * 1_000_000_000L) tick(now);
 	}
 
+	/** A frame went to the screen (the pacer kept it); frames minus presents were rendered and dropped. */
+	static void presented() {
+		presents++;
+	}
+
 	/** A frame's command buffer completed: its GPU start and end (seconds, 0 when unknown), and how long the render thread waited for it. */
 	static void retired(double gpuStart, double gpuEnd, long waitedNs) {
 		if (gpuStart > 0 && gpuEnd > gpuStart && gpus < RING) gpuMs[gpus++] = (float) ((gpuEnd - gpuStart) * 1e3);
@@ -108,9 +113,10 @@ public final class Telemetry {
 				long allocated = Native.deviceAllocated(ctx);
 				double hz = Native.refreshHz();
 				String line;
-				Log.info(line = String.format("[mcopt tick] %.0f fps%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
+				String shown = presents > 0 && presents < n ? String.format(", %.0f shown, the rest dropped by the pacer", presents / seconds) : "";
+				Log.info(line = String.format("[mcopt tick] %.0f fps%s%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
 						+ " | GPU memory %.2f GB of %.1f GB | heap %.1f/%.1f GB | %s | %s",
-					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
+					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", shown, 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
 				lastTick = line.substring("[mcopt tick] ".length());
 				sessionFrames += n;
@@ -133,7 +139,7 @@ public final class Telemetry {
 		} catch (Throwable t) {
 			Log.warnOnce("telemetry tick", "[mcopt] telemetry: a tick line failed", t);
 		}
-		frames = gpus = 0;
+		frames = gpus = presents = 0;
 		waitNs = 0;
 		tickStartNs = now;
 	}

@@ -75,6 +75,7 @@ final class MetalSurface implements GpuSurfaceBackend {
 			return;
 		}
 		if (this.paced && !Native.pace(PACE_MARGIN_S)) return;
+		if (Telemetry.ON) Telemetry.presented();
 		if (MetalEncoder.PRESENT_ACQUIRE) {
 			this.encoder.presentAcquire(this.layer, textureView); // no nextDrawable here: the present side acquires it
 			return;
