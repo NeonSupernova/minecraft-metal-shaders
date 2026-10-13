@@ -44,24 +44,29 @@ jobs:
           else
             v="0.0.0-dev.$(git rev-parse --short HEAD)"
           fi
+          # mod version as the game's log shows it, in the usual Fabric style "<semver>+mc<minecraft version>"
+          # (like sodium 0.9.2+mc26.3, iris 1.11.7+mc26.3); the asset name uses "-" because "+" is not safe in release asset names
+          mc=$(sed -n 's/^minecraft_version=//p' gradle.properties)
+          [ -n "$mc" ] || { echo "::error::minecraft_version not found in gradle.properties"; exit 1; }
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "modversion=$v+mc$mc" >> "$GITHUB_OUTPUT"
+          echo "asset=metal-shaders-$v-mc$mc.jar" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # the jar and fabric.mod.json carry the release version, not upstream mcopt's
-          sed -i '' "s/^version = '.*'$/version = '$v'/" metal/build.gradle
+          sed -i '' "s/^version = '.*'$/version = '$v+mc$mc'/" metal/build.gradle
 
       - name: Build
         run: ./gradlew :metal:build --console=plain
 
       - name: Package
         run: |
-          v='${{ steps.v.outputs.version }}'
           mkdir dist
-          cp "metal/build/libs/metal-$v.jar" "dist/metal-shaders-$v.jar"
+          cp "metal/build/libs/metal-${{ steps.v.outputs.modversion }}.jar" "dist/${{ steps.v.outputs.asset }}"
           ls -l dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: metal-shaders-${{ steps.v.outputs.version }}
+          name: ${{ steps.v.outputs.asset }}
           path: dist/*.jar
 
       - name: Publish release
@@ -69,13 +74,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.v.outputs.tag }}
+          ASSET: dist/${{ steps.v.outputs.asset }}
         run: |
           v='${{ steps.v.outputs.version }}'
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "dist/metal-shaders-$v.jar" --clobber
+            gh release upload "$TAG" "$ASSET" --clobber
           else
             pre=""; case "$v" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
-            gh release create "$TAG" "dist/metal-shaders-$v.jar" \
+            gh release create "$TAG" "$ASSET" \
               --title "Metal Shaders $v" --generate-notes $pre \
               --notes "Needs Sodium 0.9.2 for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."
           fi
