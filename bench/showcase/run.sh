@@ -27,7 +27,7 @@ if [ -n "$RDIST" ]; then
   trap 'sed -i "" "s/^renderDistance:.*/renderDistance:$OLD_RD/" "$OPT"' EXIT
   sed -i "" "s/^renderDistance:.*/renderDistance:$RDIST/" "$OPT"
 fi
-SOD="$W/release/sodium-fabric-0.9.3-alpha.1+mc26.3.jar"
+SOD="$W/release/sodium-fabric-0.9.2+mc26.3.jar"
 MODS=(--mods "$S/jars/mcopt-shade-FT2.12-rec.jar" --mods "$SOD")
 if [ "$INST" = "mcopt DEV-DH" ]; then
   MODS+=(--mods "$W/release/DistantHorizons-3.3.4-26.3-fabric-neoforge.jar" --mods "$W/release/fabric-api-0.161.0+26.3.jar")

@@ -21,7 +21,7 @@ M="/Users/gaelquintanilla/Documents/Minecraft Metal Shaders/work/release"
 # your mcopt build + Sodium on the Metal dev instance, native Retina fullscreen (3024x1964):
 "$W/bin/mcbench-run" --instance "mcopt DEV" \
     --mods "$W/wt/<branch>/metal/build/libs/metal-0.2.0-alpha.3.jar" \
-    --mods "$M/sodium-fabric-0.9.3-alpha.1+mc26.3.jar" \
+    --mods "$M/sodium-fabric-0.9.2+mc26.3.jar" \
     --jvm "-Dmcopt.shade=true" --label m1-shadows --seconds 20
 # stdout: the result dir, then one line, e.g.
 # OK m1-shadows: fb 3024x1964 Metal | spin 568.1 fps (1% low 235.7, p99 3.187 ms) gpu 1.752 ms/f | flight ... | 5 shots
@@ -265,7 +265,7 @@ Created by `bin/mcbench-setup-instances` in `~/Library/Application Support/Prism
 Prism instance ID = name). Same `mmc-pack.json` as "mcopt Metal 26.3" (MC 26.3, Fabric 0.19.5, intermediary 26.3,
 LWJGL 3.4.3), same Java (Prism's java-runtime-epsilon, 25.0.1), `AutomaticJava=true`, 6 GB heap, Prism console off.
 
-- **mcopt DEV** — Metal. Default mods: upstream mcopt 0.2.0-alpha.3 + Sodium 0.9.3-alpha.1 (runner usually replaces them).
+- **mcopt DEV** — Metal. Default mods: upstream mcopt 0.2.0-alpha.3 + Sodium 0.9.2 (runner usually replaces them).
 - **mcopt DEV-DH** (FT0, opt-in: `bin/mcbench-setup-instances --only "mcopt DEV-DH"`) — Metal + Distant Horizons
   3.3.4-26.3 + Fabric API 0.161.0+26.3 (unmodified Modrinth jars, sha512-checked, in `work/packs/dh/`). Its
   `config/DistantHorizons.toml` starts from `work/packs/dh/DistantHorizons.toml` (the user's Pollones DH settings plus the
@@ -293,7 +293,7 @@ panel = 1920x1080 framebuffer (the user's external XZ3020 1920x1080@144 monitor 
 ## Gotchas (read these)
 
 - **Jars (2026-10-10):** Gael removed the old "mcopt Metal 26.3" instance (and every shader version but the newest): Sodium
-  (`sodium-fabric-0.9.3-alpha.1+mc26.3.jar`) and the original mcopt (`mcopt-0.2.0-alpha.3.jar`) now come from `work/release/`
+  (`sodium-fabric-0.9.2+mc26.3.jar`) and the original mcopt (`mcopt-0.2.0-alpha.3.jar`) now come from `work/release/`
   (same SHA-256); the scripts were repointed there.
 
 - **`--jvm` is split on whitespace: no spaces inside a value.** The project path has spaces ("Minecraft Metal Shaders"),

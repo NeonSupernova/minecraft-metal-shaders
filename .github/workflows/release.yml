@@ -1,0 +1,57 @@
+name: Release
+
+# Push a tag like v1.0-alpha.5 and this builds the mod on an Apple Silicon runner (the native Metal
+# library needs clang + the macOS SDK) and publishes metal-shaders-<version>.jar as a GitHub release.
+# Run it by hand (Actions -> Release -> Run workflow) to get a test build as a workflow artifact, no release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15 # arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Version
+        id: v
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then v="${GITHUB_REF_NAME#v}"; else v="dev-$(git rev-parse --short HEAD)"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          # the jar and fabric.mod.json carry the release version, not upstream mcopt's
+          sed -i '' "s/^version = '.*'$/version = '$v'/" metal/build.gradle
+
+      - name: Build
+        run: ./gradlew :metal:build --console=plain
+
+      - name: Package
+        run: |
+          v='${{ steps.v.outputs.version }}'
+          mkdir dist
+          cp "metal/build/libs/metal-$v.jar" "dist/metal-shaders-$v.jar"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metal-shaders-${{ steps.v.outputs.version }}
+          path: dist/*.jar
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v='${{ steps.v.outputs.version }}'
+          pre=""; case "$v" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" "dist/metal-shaders-$v.jar" \
+            --title "Metal Shaders $v" --generate-notes $pre \
+            --notes "Needs Sodium 0.9.2 for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."

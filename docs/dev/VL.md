@@ -192,7 +192,7 @@ Steps on m2:
 
 ```sh
 W=".../work"; JAR=$W/wt/m2-vl/metal/build/libs/metal-0.2.0-alpha.3.jar
-SOD="$HOME/Library/Application Support/PrismLauncher/instances/mcopt Metal 26.3/minecraft/mods/sodium-fabric-0.9.3-alpha.1+mc26.3.jar"
+SOD="$HOME/Library/Application Support/PrismLauncher/instances/mcopt Metal 26.3/minecraft/mods/sodium-fabric-0.9.2+mc26.3.jar"
 # god-ray scenes only (fast look-dev), with the VL log
 $W/bin/mcbench-run --instance "mcopt DEV" --mods "$JAR" --mods "$SOD" --scenes shots \
   --jvm "-Dmcopt.shade=true -Dmcbench.godRays=true -Dmcbench.standardShots=false -Dmcopt.shade.vl.log=true" --label vl
