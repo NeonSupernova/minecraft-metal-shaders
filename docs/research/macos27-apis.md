@@ -4,7 +4,7 @@ Source: the `sdk27` CI job (GitHub's `xcode-27` image: macOS 27.0.1, Xcode 27.0,
 declaration marked `API_AVAILABLE(macos(27.0))` in Metal, MetalFX and QuartzCore. Counts there: Metal 47, MetalFX 31,
 QuartzCore 0. The native library builds against this SDK unchanged.
 
-None of the APIs below is adopted yet: each changes an image path that can only be judged in-game. Every adoption goes
+Only item 1 is in, and only opt-in (`-Dmcopt.metal.framegen.matrices=true`); the rest are not adopted yet: each changes an image path that can only be judged in-game. Every adoption goes
 behind `if (@available(macOS 27.0, *))`, so macOS 26 keeps today's behaviour.
 
 ## Worth adopting, in order
@@ -14,6 +14,9 @@ behind `if (@available(macOS 27.0, *))`, so macOS 26 keeps today's behaviour.
    The full view and projection matrices let MetalFX reproject exactly, including the camera's roll and any off-centre
    projection (view bobbing, the nausea effect). Expected result: fewer interpolation artifacts on camera motion. Cost:
    two matrices passed down from Java (FrameGen already has the camera).
+   **Status:** opt-in with `-Dmcopt.metal.framegen.matrices=true` (with frame generation on). The setters are sent by
+   selector after `respondsToSelector:`, so the jar still builds on the macOS 26 SDK and does nothing on macOS 26. The
+   log says once whether MetalFX took them. Compare the same scene with the flag on and off before making it the default.
 
 2. **Upscaler output straight into the target** (`MTLFXTemporalScaler.outputOffsetX/Y`, plus the per-input
    `colorContentOffset*`, `depthContentOffset*` and `motionContentOffset*`).

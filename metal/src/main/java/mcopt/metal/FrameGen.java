@@ -73,6 +73,14 @@ public final class FrameGen {
 	/** -Dmcopt.metal.framegen.log=true: every present (kind, target, presentedTime, handler time, frame start, frame done) into framegen/presents.csv. */
 	private static final boolean LOG = Boolean.getBoolean("mcopt.metal.framegen.log");
 	/**
+	 * -Dmcopt.metal.framegen.matrices=true (macOS 27, opt-in until checked in game): MetalFX also gets the camera's full
+	 * world-to-view and view-to-clip matrices, not only near, far, field of view and aspect, so its reprojection includes
+	 * the camera's roll and view bobbing. Ignored (logged once) where MetalFX doesn't take them.
+	 */
+	private static final boolean MATRICES = Boolean.getBoolean("mcopt.metal.framegen.matrices");
+	private final float[] worldToView = new float[16], viewToClip = new float[16];
+	private boolean matricesChecked;
+	/**
 	 * Seconds of slack past the frame's p90 start-to-done time (its images' copy, the compositor's latch, slower frames);
 	 * default half a refresh. Each ms of it is a ms of latency; too little and slow frames miss their refresh (a double hold).
 	 */
@@ -201,6 +209,12 @@ public final class FrameGen {
 		if (taau != null) new Matrix4f().translation(-taau.jitterNdcX(), -taau.jitterNdcY(), 0).mul(projection, this.viewProjection).mul(camera.viewRotationMatrix);
 		else this.viewProjection.set(projection).mul(camera.viewRotationMatrix);
 		this.camera = camera.pos;
+		if (MATRICES) {
+			// the clip matrix the level drew with, unjittered like viewProjection; the view with the camera's position, as
+			// MetalFX's world space (float precision: ~1 mm per 10 000 blocks from the origin)
+			(taau != null ? new Matrix4f().translation(-taau.jitterNdcX(), -taau.jitterNdcY(), 0).mul(projection) : new Matrix4f(projection)).get(this.viewToClip);
+			new Matrix4f(camera.viewRotationMatrix).translate((float) -camera.pos.x, (float) -camera.pos.y, (float) -camera.pos.z).get(this.worldToView);
+		}
 		this.yaw = camera.yRot;
 		this.pitch = camera.xRot;
 		this.level = Minecraft.getInstance().level;
@@ -389,6 +403,7 @@ public final class FrameGen {
 			if (generated) {
 				String dump = this.dumpKind();
 				float dt = (float) Math.max(1e-3, this.captureStart - this.previousCaptureStart);
+				if (MATRICES) this.cameraMatrices();
 				int check = (int) N.INTERPOLATE.invokeExact(this.encoder.enc, this.fg, dt, this.near, this.far, this.fov, this.aspect, this.interpolatedLast ? 0 : 1);
 				long early = dump == null ? 0 : this.readback((long) N.TEXTURE.invokeExact(this.fg, 2));
 				int what = "motion".equals(VIEW) ? 3 : "generated".equals(VIEW) || !this.uiDrawn ? 2 : 1;
@@ -769,6 +784,23 @@ public final class FrameGen {
 		}
 	}
 
+	/** -Dmcopt.metal.framegen.matrices: hands this frame's camera matrices to the native side (logs once whether MetalFX takes them). */
+	private void cameraMatrices() {
+		try (MemoryStack stack = MemoryStack.stackPush()) {
+			long view = stack.nmalloc(16, 64), clip = stack.nmalloc(16, 64);
+			MemoryUtil.memFloatBuffer(view, 16).put(this.worldToView);
+			MemoryUtil.memFloatBuffer(clip, 16).put(this.viewToClip);
+			boolean taken = (int) N.CAMERA_MATRICES.invokeExact(this.fg, view, clip) != 0;
+			if (!this.matricesChecked) {
+				this.matricesChecked = true;
+				if (taken) Log.info("[mcopt] frame generation: MetalFX gets the camera's matrices (macOS 27, -Dmcopt.metal.framegen.matrices)");
+				else Log.info("[mcopt] frame generation: this MetalFX doesn't take camera matrices (needs macOS 27); near/far/FOV only");
+			}
+		} catch (Throwable t) {
+			Log.warnOnce("framegen matrices", "[mcopt] frame generation: couldn't pass the camera matrices; near/far/FOV only", t);
+		}
+	}
+
 	private static RuntimeException rethrow(Throwable t) {
 		if (t instanceof RuntimeException r) return r;
 		if (t instanceof Error e) throw e;
@@ -786,6 +818,7 @@ public final class FrameGen {
 		static final MethodHandle CAPTURE = fn("mcf_capture", null, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG);
 		static final MethodHandle INTERPOLATE = fn("mcf_interpolate", JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_FLOAT, JAVA_FLOAT, JAVA_FLOAT, JAVA_FLOAT, JAVA_FLOAT, JAVA_INT);
 		static final MethodHandle LAYER = fn("mcf_layer", null, JAVA_LONG);
+		static final MethodHandle CAMERA_MATRICES = fn("mcf_camera_matrices", JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG);
 		static final MethodHandle IMAGE = fn("mcf_image", JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG);
 		static final MethodHandle SUBMIT = fn("mcf_submit", JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_DOUBLE);
 		static final MethodHandle WAIT_SCHEDULED = fn("mcf_wait_scheduled", JAVA_INT, JAVA_LONG, JAVA_DOUBLE, JAVA_LONG);
