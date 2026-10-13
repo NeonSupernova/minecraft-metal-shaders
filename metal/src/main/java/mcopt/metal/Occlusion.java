@@ -66,6 +66,7 @@ final class Occlusion {
 	static void throttle() {
 		if (failed) return;
 		boolean check = frames++ % 15 == 0;
+		if (check) StyleGuard.report();
 		if (POWER_CAP && check) {
 			try {
 				int state = Native.powerState();

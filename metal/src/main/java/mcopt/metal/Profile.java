@@ -34,6 +34,12 @@ public final class Profile {
 	static volatile String active = DEFAULT;
 	/** Why the Metal backend is off when mcopt turned it off itself (for the log and the crash report), null otherwise. */
 	public static volatile String metalOff;
+	/** Iris is installed and the shader pack runtime runs its packs on Metal: Iris itself is inert (see iris()). */
+	private static volatile boolean irisInert;
+
+	public static boolean irisInert() {
+		return irisInert;
+	}
 
 	private Profile() {
 	}
@@ -57,6 +63,10 @@ public final class Profile {
 	 */
 	private static void iris(String explicitMetal) {
 		if (!DhCompat.irisLoaded()) return;
+		if (Boolean.parseBoolean(System.getProperty("mcopt.pack", "false")) && !"false".equals(explicitMetal)
+			&& Boolean.parseBoolean(System.getProperty("mcopt.metal", "true")) && engageIrisInert()) {
+			return;
+		}
 		if (explicitMetal != null) {
 			if (Boolean.parseBoolean(explicitMetal)) {
 				Log.warn("[mcopt] Iris is installed and mcopt.metal=true is set: Iris only runs on OpenGL and will crash on Metal at startup "
@@ -70,6 +80,28 @@ public final class Profile {
 		Log.warn("[mcopt] Iris is installed: Iris only runs on OpenGL and crashes on Metal, so the game uses OpenGL and the Metal "
 			+ "renderer (with its built-in shaders) is OFF; mcopt's other optimizations stay on. To get the Metal renderer, disable "
 			+ "Iris (Prism: Edit instance -> Mods -> untick Iris; or remove its jar). -Dmcopt.metal=true forces Metal anyway (Iris will crash).");
+	}
+
+	/**
+	 * The shader pack runtime (mcopt.pack, experimental): Iris stays installed for its pack front end (parsing, options,
+	 * GLSL transformer) while mcopt draws the pack on Metal. Iris then has to keep its OpenGL renderer out of the game, which
+	 * it does by itself when the game runs on Vulkan: IrisMixinPlugin.usingVulkan (read from options.txt in its static block)
+	 * makes every Iris mixin but the VKOnly ones skip. Set here, from mcopt's mixin plugins' static blocks, before Iris's
+	 * mixin configs are prepared (plugins are created when configs are selected, all before any config is prepared). If
+	 * Iris can't be switched, the OpenGL fallback below applies as before.
+	 */
+	private static boolean engageIrisInert() {
+		try {
+			Class<?> plugin = Class.forName("net.irisshaders.iris.mixin.IrisMixinPlugin", true, Profile.class.getClassLoader());
+			plugin.getField("usingVulkan").setBoolean(null, true);
+			irisInert = true;
+			Log.info("[mcopt] pack: shader packs run on Metal (mcopt.pack, experimental): Iris loads and translates the pack, "
+				+ "its OpenGL renderer stays off. -Dmcopt.pack=false goes back to Iris on OpenGL.");
+			return true;
+		} catch (Throwable t) {
+			Log.warn("[mcopt] pack: can't switch Iris's OpenGL renderer off (Iris changed?); using OpenGL for Iris as before", t);
+			return false;
+		}
 	}
 
 	/**

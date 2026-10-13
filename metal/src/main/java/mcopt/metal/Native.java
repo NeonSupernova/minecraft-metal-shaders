@@ -121,6 +121,8 @@ final class Native {
 	private static final MethodHandle FX_DIRECT_STATE = fn("mc_fx_direct_state", false, JAVA_INT);
 	private static final MethodHandle REFRESH_HZ = fn("mc_refresh_hz", false, JAVA_DOUBLE);
 	private static final MethodHandle WINDOW_OCCLUDED = fn("mc_window_occluded", false, JAVA_INT);
+	private static final MethodHandle STYLE_GUARD = fn("mc_style_guard", false, JAVA_INT);
+	private static final MethodHandle STYLE_GUARD_ERROR = fn("mc_style_guard_error", false, JAVA_INT, JAVA_LONG, JAVA_INT);
 	private static final MethodHandle SLEEP_PRECISE = fn("mc_sleep_precise", false, null, JAVA_LONG);
 	private static final MethodHandle PROBE = fn("mc_probe", false, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_INT, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG,
 		JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_LONG, JAVA_INT);
@@ -295,6 +297,8 @@ final class Native {
 	static double paceExtraMs() { try { return (double) PACE_EXTRA_MS.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static long presentDropped() { try { return (long) PRESENT_DROPPED.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static void sleepPrecise(long ns) { try { SLEEP_PRECISE.invokeExact(ns); } catch (Throwable t) { throw rethrow(t); } }
+	static boolean styleGuard() { try { return (int) STYLE_GUARD.invokeExact() != 0; } catch (Throwable t) { throw rethrow(t); } }
+	static int styleGuardError(long out, int cap) { try { return (int) STYLE_GUARD_ERROR.invokeExact(out, cap); } catch (Throwable t) { throw rethrow(t); } }
 	static boolean windowOccluded() { try { return (int) WINDOW_OCCLUDED.invokeExact() != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static void fxDirect(int on) { try { FX_DIRECT.invokeExact(on); } catch (Throwable t) { throw rethrow(t); } }
 	static int fxDirectState() { try { return (int) FX_DIRECT_STATE.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
