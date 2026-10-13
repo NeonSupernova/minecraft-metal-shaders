@@ -112,6 +112,7 @@ Settings live in `config/mcopt.properties` in your game folder (written on the f
 | `mcopt.shade` | `true` / `false` (false = mcopt's plain Metal renderer) | `true` |
 | `mcopt.shade.preset` | `performance`, `balanced`, `quality`, `ultra` | `balanced` |
 | `mcopt.shade.look` | `epic`, `storybook`, `natural` | `epic` |
+| `mcopt.log.tick` | seconds between performance lines in the log (fps, 1% low, frame/GPU ms, GPU memory, thermal state); `0` = off | `5` |
 | `mcopt.shade.output` | `native`, `1440`, `1200`, `1080`, `900` (also the **Output** button in the pause menu) | `native` |
 
 For the most FPS: Video Settings → VSync off, Max Framerate unlimited. To see your FPS, press **F3**.

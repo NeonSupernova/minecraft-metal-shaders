@@ -30,6 +30,8 @@ public final class Profile {
 	/** Alpha keys left out on the small tier: the 4096-entry clone cache costs memory an 8 GB / small-GPU Mac lacks. */
 	static final java.util.List<String> SMALL_OUT = java.util.List.of("mcopt.chunk.clones", "mcopt.chunk.clonesCleanup");
 	static final String DEFAULT = "alpha";
+	/** The profile applied (from -Dmcopt.profile, config/mcopt.properties or the default), for the startup report. */
+	static volatile String active = DEFAULT;
 
 	private Profile() {
 	}
@@ -108,6 +110,7 @@ public final class Profile {
 		}
 		String name = System.getProperty("mcopt.profile", file.getProperty("profile", "")).trim();
 		if (name.isEmpty()) name = DEFAULT;
+		active = name;
 		if (!Files.exists(cfg)) { // first launch: record the effective profile (none stays none) and the shaders' defaults, applied now too
 			writeDefault(cfg, name);
 			if (Files.isRegularFile(cfg)) {
@@ -160,10 +163,14 @@ public final class Profile {
 			+ (out.isEmpty() ? "" : "; left out:" + out));
 	}
 
-	private static int gpuCores() {
+	private static int gpuCores = Integer.MIN_VALUE;
+
+	/** The GPU's core count from the IORegistry (one ioreg run, cached), or -1 if unreadable. */
+	static synchronized int gpuCores() {
+		if (gpuCores != Integer.MIN_VALUE) return gpuCores;
 		String s = run("/usr/sbin/ioreg", "-rd1", "-c", "AGXAccelerator");
 		java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"gpu-core-count\"\\s*=\\s*(\\d+)").matcher(s);
-		return m.find() ? Integer.parseInt(m.group(1)) : -1;
+		return gpuCores = m.find() ? Integer.parseInt(m.group(1)) : -1;
 	}
 
 	private static long memBytes() {
@@ -199,6 +206,9 @@ public final class Profile {
 			mcopt.shade.preset=balanced
 			# Art style: epic, storybook or natural.
 			mcopt.shade.look=epic
+			#
+			# A performance line in the log every N seconds (fps and 1%% low, frame and GPU times, GPU memory, thermal state); 0 = off.
+			#mcopt.log.tick=5
 			#
 			# Far terrain (EXPERIMENTAL, off by default; for Macs with 10 or more GPU cores): remove the # below.
 			#mcopt.lod=true

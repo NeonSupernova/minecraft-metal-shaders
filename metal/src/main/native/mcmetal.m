@@ -97,6 +97,14 @@ Ctx *mc_create(char *name, int nameCap, char *err, int errCap) {
 uint64_t mc_max_buffer_length(Ctx *ctx) { return ctx->device.maxBufferLength; }
 /* mcopt-shade M3.3 (robustness checks): bytes the device has allocated (MTLDevice.currentAllocatedSize), for the rejoin leak check. */
 uint64_t mc_device_allocated(Ctx *ctx) { return ctx->device.currentAllocatedSize; }
+// Telemetry (Telemetry.java): the GPU memory macOS budgets for this process before it starts paging (MTLDevice), and the
+// machine's thermal state (0 nominal, 1 fair, 2 serious, 3 critical: macOS throttles from serious) with bit 8 set while
+// Low Power Mode is on.
+uint64_t mc_working_set(Ctx *ctx) { return ctx->device.recommendedMaxWorkingSetSize; }
+int mc_power_state(void) {
+	NSProcessInfo *p = [NSProcessInfo processInfo];
+	return (int) p.thermalState | ([p isLowPowerModeEnabled] ? 0x100 : 0);
+}
 static int poolRelease(id obj);
 void mc_release(id obj) {
 	if (!poolRelease(obj)) [obj release];

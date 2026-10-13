@@ -55,6 +55,8 @@ final class Native {
 	private static final MethodHandle DIAG_ENABLE = fn("mc_diag_enable", false, null, JAVA_DOUBLE);
 	private static final MethodHandle CPU_FLAGS = fn("mc_cpu_flags", false, null, JAVA_INT);
 	private static final MethodHandle LATENCY_ACTIVITY = fn("mc_latency_activity", false, JAVA_INT);
+	private static final MethodHandle WORKING_SET = fn("mc_working_set", false, JAVA_LONG, JAVA_LONG);
+	private static final MethodHandle POWER_STATE = fn("mc_power_state", false, JAVA_INT);
 	private static final MethodHandle POOL_ADD = fn("mc_pool_add", false, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_INT);
 	private static final MethodHandle POOL_TAKE = fn("mc_pool_take", false, JAVA_LONG, JAVA_LONG, JAVA_LONG);
 	private static final MethodHandle BUFFER_LENGTH = fn("mc_buffer_length", true, JAVA_LONG, JAVA_LONG);
@@ -214,6 +216,8 @@ final class Native {
 	static long cadencePresented(int slot) { try { return (long) CADENCE_PRESENTED.invokeExact(slot); } catch (Throwable t) { throw rethrow(t); } }
 	static double cmdGpuMicros(long cmd) { try { return (double) CMD_GPU_US.invokeExact(cmd); } catch (Throwable t) { throw rethrow(t); } }
 	static void diagEnable(double thresholdMs) { try { DIAG_ENABLE.invokeExact(thresholdMs); } catch (Throwable t) { throw rethrow(t); } }
+	static long workingSet(long ctx) { try { return (long) WORKING_SET.invokeExact(ctx); } catch (Throwable t) { throw rethrow(t); } }
+	static int powerState() { try { return (int) POWER_STATE.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
 	static boolean latencyActivity() { try { return (int) LATENCY_ACTIVITY.invokeExact() != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static void cpuFlags(int flags) { try { CPU_FLAGS.invokeExact(flags); } catch (Throwable t) { throw rethrow(t); } }
 	static boolean poolAdd(long ctx, long size, int delayMs) { try { return (int) POOL_ADD.invokeExact(ctx, size, delayMs) != 0; } catch (Throwable t) { throw rethrow(t); } }
