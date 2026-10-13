@@ -1,0 +1,28 @@
+#!/bin/sh
+# Which Sodium releases the mod runs on unchanged: every Sodium class our code names (imports, mixin targets, strings)
+# is diffed between the Sodium tag we build against (gradle.properties) and each tag given. "identical" means no source
+# change in any class we touch; anything else lists the changed files to read before widening fabric.mod.json's range.
+# Usage: tools/sodium-compat [<sodium clone>] <tag>...     e.g. tools/sodium-compat mc26.3-0.9.3-alpha.2
+#   The clone defaults to $SODIUM_SRC or ../sodium; missing tags are fetched (shallow).
+set -eu
+cd "$(dirname "$0")/.."
+src=${SODIUM_SRC:-../sodium}
+if [ $# -gt 0 ] && [ -d "$1/.git" ]; then src=$1; shift; fi
+[ $# -gt 0 ] || { echo "usage: $0 [<sodium clone>] <tag>..." >&2; exit 2; }
+[ -d "$src/.git" ] || git clone -q --depth 1 https://github.com/CaffeineMC/sodium "$src"
+base=$(sed -n 's/^sodium_version=mc\([^-]*\)-\(.*\)-fabric$/mc\1-\2/p' gradle.properties)
+[ -n "$base" ] || { echo "no sodium_version in gradle.properties" >&2; exit 1; }
+for t in "$base" "$@"; do git -C "$src" rev-parse -q --verify "refs/tags/$t" >/dev/null || git -C "$src" fetch -q --depth 1 origin tag "$t"; done
+classes=$(grep -rhoE 'net[./]caffeinemc[./]mods[./]sodium[./][A-Za-z0-9_./$]+' metal/src/main/java metal/src/main/resources \
+	| sed 's#/#.#g; s/\$.*//; s/\.[a-z][A-Za-z0-9_]*$//' | sort -u)
+files=$(git -C "$src" ls-tree -r --name-only "$base" | grep -v '^neoforge/')
+paths=""
+for c in $classes; do
+	p=$(printf '%s\n' "$files" | grep -E "(^|/)$(echo "$c" | tr . /)\.java$" | head -1)
+	[ -n "$p" ] && paths="$paths $p" || echo "unresolved in $base: $c"
+done
+echo "$(echo $paths | wc -w) Sodium classes referenced; base $base"
+for t in "$@"; do
+	changed=$(git -C "$src" diff --name-only "$base" "$t" -- $paths)
+	if [ -z "$changed" ]; then echo "$t: identical"; else echo "$t: changed:"; printf '  %s\n' $changed; fi
+done
