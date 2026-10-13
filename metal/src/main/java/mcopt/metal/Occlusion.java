@@ -13,15 +13,15 @@ package mcopt.metal;
  * and the power goes to keeping the clocks up instead (the cap sits a fifth above the refresh, so every refresh still gets a new frame). -Dmcopt.powerCap=false turns it off. Render thread only.
  */
 final class Occlusion {
-	private static final int FPS = Integer.getInteger("mcopt.occludedFps", 15);
-	private static final boolean POWER_CAP = Boolean.parseBoolean(System.getProperty("mcopt.powerCap", "true"));
+	private static volatile int FPS = Integer.getInteger("mcopt.occludedFps", 15);
+	private static volatile boolean POWER_CAP = Boolean.parseBoolean(System.getProperty("mcopt.powerCap", "true"));
 	/**
 	 * VSync on: frames are capped just above the refresh of the display the window is on. VSync shows one frame per
 	 * refresh, but on macOS a window on a slower external display (a 75 Hz monitor next to the 120 Hz panel) can still be
 	 * driven at the faster rate: alpha.9 rendered 119 fps on a 75 Hz monitor, 44 frames a second nobody saw.
 	 * -Dmcopt.vsyncCap=false turns it off.
 	 */
-	private static final boolean VSYNC_CAP = Boolean.parseBoolean(System.getProperty("mcopt.vsyncCap", "true"));
+	private static volatile boolean VSYNC_CAP = Boolean.parseBoolean(System.getProperty("mcopt.vsyncCap", "true"));
 	private static boolean hidden, failed, capped;
 	private static volatile boolean vsync;
 	private static String presentMode;
@@ -29,6 +29,15 @@ final class Occlusion {
 	private static long last;
 
 	private Occlusion() {
+	}
+
+	/** The settings screen changed a cap: read them again (they apply from the next frame). */
+	static void reload() {
+		FPS = Integer.getInteger("mcopt.occludedFps", 15);
+		POWER_CAP = Boolean.parseBoolean(System.getProperty("mcopt.powerCap", "true"));
+		VSYNC_CAP = Boolean.parseBoolean(System.getProperty("mcopt.vsyncCap", "true"));
+		capped = capped && POWER_CAP;
+		hidden = hidden && FPS > 0;
 	}
 
 	/** The surface's present mode (each configure); logged when it changes. */

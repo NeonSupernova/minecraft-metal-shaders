@@ -105,7 +105,7 @@ Steps:
    and the Sodium jar in your `mods` folder.
 3. Start the game. The shaders are on from the first launch (balanced preset).
 
-Settings live in `config/mcopt.properties` in your game folder (written on the first launch):
+In game: **Options → Video Settings → Metal Shaders** (Sodium's settings screen) has the renderer, shaders, quality preset, look, render resolution, frame generation and frame-rate caps; settings marked as needing a restart apply on the next launch, the others right away. Everything is saved to `config/mcopt.properties` in your game folder (written on the first launch), which you can also edit:
 
 | Key | Values | Default |
 |---|---|---|
