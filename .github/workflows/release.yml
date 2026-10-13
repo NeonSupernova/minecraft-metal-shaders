@@ -90,11 +90,11 @@ jobs:
           cp "metal/build/libs/metal-${{ steps.v.outputs.modversion }}.jar" "dist/${{ steps.v.outputs.asset }}"
           ls -l dist
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.v.outputs.asset }}
-          path: dist/*.jar
-          compression-level: 0 # a jar is already a zip
+          # the jar itself, not zipped: the run page's download is the mod file, ready for the mods folder
+          path: dist/${{ steps.v.outputs.asset }}
+          archive: false
           retention-days: 30
 
   sdk27:
@@ -140,7 +140,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.asset }}
           path: dist
@@ -151,8 +151,11 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build.outputs.tag }}
           VERSION: ${{ needs.build.outputs.version }}
-          ASSET: dist/${{ needs.build.outputs.asset }}
+          ASSET_NAME: ${{ needs.build.outputs.asset }}
         run: |
+          # the jar wherever download-artifact put it (a direct upload is a single file, not a zip)
+          ASSET=$(find dist -name "$ASSET_NAME" -type f | head -1); [ -n "$ASSET" ] || ASSET=$(find dist -name "*.jar" -type f | head -1)
+          [ -n "$ASSET" ] || { echo "::error::$ASSET_NAME not in the downloaded artifact"; ls -lR dist; exit 1; }
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ASSET" --clobber
           else
