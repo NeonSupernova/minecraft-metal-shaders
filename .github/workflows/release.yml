@@ -1,32 +1,48 @@
 name: Release
 
-# Push a tag like v1.0.0-alpha.7 (semantic versioning: vMAJOR.MINOR.PATCH, optional -alpha.N / -beta.N / -rc.N) and this builds the mod on an Apple Silicon runner (the native Metal
-# library needs clang + the macOS SDK) and publishes metal-shaders-<version>.jar as a GitHub release.
-# If the release already exists (e.g. you made it in the GitHub UI, which also creates the tag), the jar is attached to it.
-# Run it by hand (Actions -> Release -> Run workflow) to get a test build as a workflow artifact, no release; fill in
-# "tag" to also attach the jar to that existing release.
+# Builds the mod on an Apple Silicon runner (the native Metal library needs clang + the macOS SDK) and, for a version tag,
+# publishes metal-shaders-<version>-mc<minecraft>.jar as a GitHub release.
+# - Push a tag like v1.0.0-alpha.8 (semantic versioning: vMAJOR.MINOR.PATCH, optional -alpha.N / -beta.N / -rc.N), or make
+#   the release in the GitHub UI (which creates the tag): the jar is built and attached.
+# - Pull requests to main that touch the mod or the build: a check build (no release); a newer push cancels the older run.
+# - Run it by hand (Actions -> Release -> Run workflow): a test build as a workflow artifact; fill in "tag" to publish that
+#   release (created at the commit built if it doesn't exist yet).
 on:
   push:
     tags: ['v*']
+  pull_request:
+    branches: [main]
+    paths: ['metal/**', 'gradle/**', '*.gradle', 'gradle.properties', 'gradlew', '.github/workflows/release.yml']
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to attach the jar to (leave empty for a test build only)
+        description: Release tag to build and publish (created at this commit if it doesn't exist; empty = test build only)
         required: false
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  # one run per PR / branch / tag; a newer push to a PR cancels the older run, releases are never cancelled
+  group: release-${{ github.event.pull_request.number || github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: macos-26 # arm64; the native code uses macOS 26 SDK APIs (MetalFX frame interpolation)
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      asset: ${{ steps.v.outputs.asset }}
+      tag: ${{ steps.v.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '25'
+          cache: gradle # Gradle, its dependencies and Loom's Minecraft setup, kept between runs
 
       - name: Version
         id: v
@@ -57,19 +73,13 @@ jobs:
 
       - name: Toolchain
         run: |
-          # what built this jar: Xcode, the macOS SDK the native library compiled against, Java, and every Xcode on the runner
-          xcodebuild -version
-          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version) at $(xcrun --sdk macosx --show-sdk-path)"
+          # what builds this jar: Xcode, the macOS SDK the native library compiles against (and how many macOS 27 Metal APIs it
+          # declares: 0 until the runner has a macOS 27 SDK), Java
+          xcodebuild -version | head -1
+          sdk=$(xcrun --sdk macosx --show-sdk-path)
+          n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers 2>/dev/null | wc -l | tr -d ' ')
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version), $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
           java -version 2>&1 | head -1
-          ls -d /Applications/Xcode*.app 2>/dev/null || true
-          # Metal / MetalFX / QuartzCore declarations introduced in macOS 27 by any installed SDK (what a 27 SDK would let the native code use)
-          for x in /Applications/Xcode*.app; do
-            sdk="$x/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-            [ -d "$sdk" ] || continue
-            n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/Metal.framework/Headers" "$sdk/System/Library/Frameworks/MetalFX.framework/Headers" "$sdk/System/Library/Frameworks/QuartzCore.framework/Headers" 2>/dev/null | wc -l | tr -d ' ')
-            echo "$x: $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
-            [ "$n" -gt 0 ] && grep -rhE -B2 "macos\(27" "$sdk/System/Library/Frameworks/Metal.framework/Headers" "$sdk/System/Library/Frameworks/MetalFX.framework/Headers" "$sdk/System/Library/Frameworks/QuartzCore.framework/Headers" | grep -E "^(@property|- \(|\+ \(|typedef|MTL_EXPORT|API_AVAILABLE|@interface|@protocol|.*MTL[A-Z][A-Za-z0-9]+)" | head -200 || true
-          done
 
       - name: Build
         run: ./gradlew :metal:build --console=plain
@@ -80,24 +90,40 @@ jobs:
           cp "metal/build/libs/metal-${{ steps.v.outputs.modversion }}.jar" "dist/${{ steps.v.outputs.asset }}"
           ls -l dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ${{ steps.v.outputs.asset }}
           path: dist/*.jar
+          compression-level: 0 # a jar is already a zip
+          retention-days: 30
+
+  publish:
+    needs: build
+    if: needs.build.outputs.tag != ''
+    runs-on: ubuntu-latest # only gh calls: no macOS time, and the build job keeps a read-only token
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.build.outputs.asset }}
+          path: dist
 
       - name: Publish release
-        if: steps.v.outputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.v.outputs.tag }}
-          ASSET: dist/${{ steps.v.outputs.asset }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          VERSION: ${{ needs.build.outputs.version }}
+          ASSET: dist/${{ needs.build.outputs.asset }}
         run: |
-          v='${{ steps.v.outputs.version }}'
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ASSET" --clobber
           else
-            pre=""; case "$v" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
-            gh release create "$TAG" "$ASSET" \
-              --title "Metal Shaders $v" --generate-notes $pre \
-              --notes "Needs Sodium 0.9.2 for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."
+            pre=""; case "$VERSION" in *alpha*|*beta*|*rc*) pre="--prerelease";; esac
+            # a new tag lands on exactly the commit this jar was built from
+            gh release create "$TAG" "$ASSET" --target "$GITHUB_SHA" \
+              --title "Metal Shaders $VERSION" --generate-notes $pre \
+              --notes "Needs Sodium 0.9.2 or newer for Minecraft 26.3 (separate download), Fabric Loader 0.19.5+, Java 25, Apple Silicon Mac on macOS 26+."
           fi
