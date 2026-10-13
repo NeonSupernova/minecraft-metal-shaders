@@ -43,6 +43,8 @@ final class MetalPipeline implements BackendRenderPipeline {
 	final float depthBiasSlope;
 	final int primitive;
 	final String name;
+	/** Vanilla's cloud pipelines: their draws may be culled (MetalTerrain.cullClouds) or replaced (ShadeClouds). Set once, not compared per draw. */
+	final boolean clouds;
 	/** MTLCompareFunction of depthState, for MetalProbe. */
 	final int depthCompare;
 	/** Sodium solid/cutout terrain only, with MetalTerrain on: the same pipeline fetching its own vertices; 0 otherwise. */
@@ -81,6 +83,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 		this.depthState = depthState;
 		this.depthCompare = depthCompare;
 		this.name = info.name();
+		this.clouds = this.name.equals("minecraft:pipeline/clouds") || this.name.equals("minecraft:pipeline/flat_clouds");
 		this.uniforms = info.uniforms();
 		this.cull = info.cull();
 		this.wireframe = info.polygonMode() == PolygonMode.WIREFRAME;

@@ -130,16 +130,50 @@ final class Native {
 		return LIB;
 	}
 
+	/**
+	 * libmcmetal.dylib on disk. Kept per build under ~/Library/Caches/mcopt/natives/<content hash>/ and reused: a launch
+	 * writes nothing when the jar's library is already there, macOS checks a known file instead of a new one each time,
+	 * and a crash leaves no temp copy behind. The file is written whole and then moved into place, so a half-written
+	 * library is never loaded. If the cache can't be used, a temp copy as before.
+	 */
 	private static Path extract() {
+		byte[] bytes;
 		try (InputStream in = Native.class.getResourceAsStream("/natives/libmcmetal.dylib")) {
+			if (in == null) throw new IllegalStateException("libmcmetal.dylib is missing from the mod jar");
+			bytes = in.readAllBytes();
+		} catch (IOException e) {
+			throw new IllegalStateException("can't read libmcmetal.dylib", e);
+		}
+		try {
+			Path dir = Path.of(System.getProperty("user.home"), "Library", "Caches", "mcopt", "natives", hash(bytes));
+			Path lib = dir.resolve("libmcmetal.dylib");
+			if (Files.isRegularFile(lib) && Files.size(lib) == bytes.length) return lib;
+			Files.createDirectories(dir);
+			Path tmp = Files.createTempFile(dir, "libmcmetal", ".tmp");
+			Files.write(tmp, bytes);
+			Files.move(tmp, lib, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			return lib;
+		} catch (IOException | RuntimeException e) {
+			System.out.println("[mcopt] libmcmetal cache unavailable (" + e + "); using a temp copy");
+		}
+		try {
 			Path dir = Files.createTempDirectory("mcmetal");
 			Path lib = dir.resolve("libmcmetal.dylib");
-			Files.copy(in, lib, StandardCopyOption.REPLACE_EXISTING);
+			Files.write(lib, bytes);
 			lib.toFile().deleteOnExit();
 			dir.toFile().deleteOnExit();
 			return lib;
 		} catch (IOException e) {
 			throw new IllegalStateException("can't extract libmcmetal.dylib", e);
+		}
+	}
+
+	private static String hash(byte[] bytes) {
+		try {
+			byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+			return java.util.HexFormat.of().formatHex(d, 0, 12);
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 
