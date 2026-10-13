@@ -46,14 +46,16 @@ final class MetalDevice implements GpuDeviceBackend {
 	private final long ctx;
 	private final MetalEncoder encoder;
 	private final DeviceInfo info;
+	private final String deviceName;
 
 	MetalDevice() throws BackendCreationException {
 		try (MemoryStack stack = MemoryStack.stackPush()) {
 			long name = stack.nmalloc(1, 256), err = stack.nmalloc(1, 1024);
 			this.ctx = Native.create(name, 256, err, 1024);
 			if (this.ctx == 0) throw new BackendCreationException("Metal unavailable: " + MemoryUtil.memUTF8(err), BackendCreationException.Reason.PLATFORM_ERROR);
+			this.deviceName = MemoryUtil.memUTF8(name);
 			this.info = new DeviceInfo(
-				MemoryUtil.memUTF8(name), "Apple", "Metal 3 (mcopt)", true, "Metal", 1.0F,
+				this.deviceName, "Apple", "Metal 3 (mcopt)", true, "Metal", 1.0F,
 				new DeviceLimits(16, 256, 16384, Native.maxBufferLength(this.ctx), Integer.MAX_VALUE, 8, Integer.MAX_VALUE),
 				// Every multi-draw form is a native loop of Metal draws, so all of them are "supported".
 				new DeviceFeatures(true, true, true, true, true, true, true, true),
@@ -65,7 +67,12 @@ final class MetalDevice implements GpuDeviceBackend {
 		// -Dmcopt.metal.cbdiag=MS: stall diagnostics on stderr (big buffer allocations, slow command buffers); see mcmetal.m.
 		String diag = System.getProperty("mcopt.metal.cbdiag");
 		if (diag != null) Native.diagEnable(Double.parseDouble(diag));
+		// macOS latency-critical activity (mcmetal.m mc_latency_activity): no App Nap, no timer coalescing; -Dmcopt.latencyActivity=false skips it.
+		if (Boolean.parseBoolean(System.getProperty("mcopt.latencyActivity", "true")) && !Native.latencyActivity()) {
+			Log.warn("[mcopt] macOS refused latency-critical scheduling; frame pacing may jitter when the window is covered");
+		}
 		if (mcopt.metal.cpu.Cpu.PASS || mcopt.metal.cpu.Cpu.CMD_AHEAD) Native.cpuFlags(mcopt.metal.cpu.Cpu.nativeFlags(mcopt.metal.cpu.Cpu.PASS)); // opt-in: see mc_cpu_flags
+		Telemetry.start(this.ctx, this.deviceName); // the startup report; tick lines follow every mcopt.log.tick seconds
 	}
 
 	/** Queues an ARENA_RESERVE arena for provisioning, and with culling on the two caches MetalTerrain.ArenaCache adds for it. */

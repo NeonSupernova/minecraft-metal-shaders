@@ -43,6 +43,8 @@ final class MetalPipeline implements BackendRenderPipeline {
 	final float depthBiasSlope;
 	final int primitive;
 	final String name;
+	/** Vanilla's cloud pipelines: their draws may be culled (MetalTerrain.cullClouds) or replaced (ShadeClouds). Set once, not compared per draw. */
+	final boolean clouds;
 	/** MTLCompareFunction of depthState, for MetalProbe. */
 	final int depthCompare;
 	/** Sodium solid/cutout terrain only, with MetalTerrain on: the same pipeline fetching its own vertices; 0 otherwise. */
@@ -81,6 +83,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 		this.depthState = depthState;
 		this.depthCompare = depthCompare;
 		this.name = info.name();
+		this.clouds = this.name.equals("minecraft:pipeline/clouds") || this.name.equals("minecraft:pipeline/flat_clouds");
 		this.uniforms = info.uniforms();
 		this.cull = info.cull();
 		this.wireframe = info.polygonMode() == PolygonMode.WIREFRAME;
@@ -121,7 +124,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 		} catch (RuntimeException e) {
 			// A registry (native shading) variant that doesn't build, e.g. against a resource pack's own core shader: the
 			// game's shaders instead of a crash.
-			System.out.println("mcopt-metal: registry MSL for " + info.name() + " failed to build, using the game's shaders: " + String.valueOf(e.getMessage()).lines().findFirst().orElse(""));
+			Log.warn("mcopt-metal: registry MSL for " + info.name() + " failed to build, using the game's shaders: " + String.valueOf(e.getMessage()).lines().findFirst().orElse(""));
 			mcopt.metal.shade.ShadeRobust.registryBuilt(info.name(), false); // mcopt-shade M3.3: what depends on it steps back too
 			return compile(encoder, info, false);
 		}
@@ -240,7 +243,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 		if (variant == null) return null;
 		for (String required : variant.required()) {
 			if (info.uniforms().stream().noneMatch(u -> u.name().equals(required))) {
-				if (SKIPPED.add(info.name())) System.out.println("mcopt-metal: registry MSL for " + info.name() + " skipped, the pipeline has no uniform " + required);
+				if (SKIPPED.add(info.name())) Log.info("mcopt-metal: registry MSL for " + info.name() + " skipped, the pipeline has no uniform " + required);
 				return null;
 			}
 		}
@@ -527,7 +530,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 		try {
 			return this.variant(formats, depth, false);
 		} catch (RuntimeException e) {
-			if (FAILED_VARIANTS.add(this.name)) System.out.println("mcopt-metal: no " + java.util.Arrays.toString(formats) + " variant of " + this.name + ": " + firstLine(e));
+			if (FAILED_VARIANTS.add(this.name)) Log.warn("mcopt-metal: no " + java.util.Arrays.toString(formats) + " variant of " + this.name + ": " + firstLine(e));
 			return own;
 		}
 	}
@@ -539,7 +542,7 @@ final class MetalPipeline implements BackendRenderPipeline {
 			long v = this.variant(formats, true, true);
 			return v != 0 ? v : this.pulled;
 		} catch (RuntimeException e) {
-			if (FAILED_VARIANTS.add(this.name + "+p")) System.out.println("mcopt-metal: no pulled variant of " + this.name + ": " + firstLine(e));
+			if (FAILED_VARIANTS.add(this.name + "+p")) Log.warn("mcopt-metal: no pulled variant of " + this.name + ": " + firstLine(e));
 			return this.pulled;
 		}
 	}

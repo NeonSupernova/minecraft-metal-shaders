@@ -25,8 +25,7 @@ public final class Rec {
 			recorder.frame(encoder, view);
 		} catch (Throwable t) {
 			failed = true;
-			System.out.println("mcopt-rec: recorder off after an error: " + t);
-			t.printStackTrace(System.out);
+			mcopt.metal.Log.warn("mcopt-rec: recorder off after an error", t);
 			if (recorder != null) recorder.abort();
 		}
 	}

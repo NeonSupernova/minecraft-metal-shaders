@@ -100,7 +100,7 @@ public final class ShadeAurora {
 		} catch (Throwable t) {
 			failed = true;
 			want = false;
-			System.out.println("[mcopt] shade: aurora pass off (the sky pass evaluates it per pixel): " + t);
+			mcopt.metal.Log.warn("[mcopt] shade: aurora pass off (the sky pass evaluates it per pixel)", t);
 		}
 	}
 

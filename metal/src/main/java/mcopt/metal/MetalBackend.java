@@ -17,6 +17,7 @@ public final class MetalBackend implements GpuBackend {
 
 	@Override
 	public void loadLibrary() {
+		GlShim.install(); // as early as SDL's video allows (else at createWindow)
 	}
 
 	@Override
@@ -25,7 +26,9 @@ public final class MetalBackend implements GpuBackend {
 
 	@Override
 	public long createWindow(@Nullable String title, int width, int height, long flags) {
-		return SDLVideo.SDL_CreateWindow(title, width, height, SDLVideo.SDL_WINDOW_METAL | flags);
+		long window = SDLVideo.SDL_CreateWindow(title, width, height, SDLVideo.SDL_WINDOW_METAL | flags);
+		if (window != 0) GlShim.install(); // OpenGL-backend mods query OpenGL at startup: without a context LWJGL aborts the JVM
+		return window;
 	}
 
 	@Override

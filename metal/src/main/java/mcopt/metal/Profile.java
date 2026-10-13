@@ -30,6 +30,8 @@ public final class Profile {
 	/** Alpha keys left out on the small tier: the 4096-entry clone cache costs memory an 8 GB / small-GPU Mac lacks. */
 	static final java.util.List<String> SMALL_OUT = java.util.List.of("mcopt.chunk.clones", "mcopt.chunk.clonesCleanup");
 	static final String DEFAULT = "alpha";
+	/** The profile applied (from -Dmcopt.profile, config/mcopt.properties or the default), for the startup report. */
+	static volatile String active = DEFAULT;
 
 	private Profile() {
 	}
@@ -103,18 +105,19 @@ public final class Profile {
 			try (Reader r = Files.newBufferedReader(cfg, StandardCharsets.UTF_8)) {
 				file.load(r);
 			} catch (IOException e) {
-				System.out.println("[mcopt] profile: can't read " + cfg + ": " + e);
+				Log.warn("[mcopt] profile: can't read " + cfg, e);
 			}
 		}
 		String name = System.getProperty("mcopt.profile", file.getProperty("profile", "")).trim();
 		if (name.isEmpty()) name = DEFAULT;
+		active = name;
 		if (!Files.exists(cfg)) { // first launch: record the effective profile (none stays none) and the shaders' defaults, applied now too
 			writeDefault(cfg, name);
 			if (Files.isRegularFile(cfg)) {
 				try (Reader r = Files.newBufferedReader(cfg, StandardCharsets.UTF_8)) {
 					file.load(r);
 				} catch (IOException e) {
-					System.out.println("[mcopt] profile: can't read " + cfg + ": " + e);
+					Log.warn("[mcopt] profile: can't read " + cfg, e);
 				}
 			}
 		}
@@ -123,12 +126,12 @@ public final class Profile {
 			Properties p = new Properties();
 			try (InputStream in = Profile.class.getResourceAsStream("/mcopt/profiles/" + name + ".properties")) {
 				if (in == null) {
-					System.out.println("[mcopt] profile: no profile named '" + name + "' (ignored)");
+					Log.warn("[mcopt] profile: no profile named '" + name + "' (from profile= in config/mcopt.properties or -Dmcopt.profile); use alpha, recommended or none. No profile applied");
 				} else {
 					p.load(in);
 				}
 			} catch (IOException e) {
-				System.out.println("[mcopt] profile " + name + ": " + e);
+				Log.warn("[mcopt] profile: can't read profile '" + name + "' from the mod jar; no profile applied", e);
 			}
 			p.stringPropertyNames().forEach(k -> flags.put(k, p.getProperty(k).trim()));
 			if (name.equals("alpha")) tier(flags);
@@ -160,10 +163,14 @@ public final class Profile {
 			+ (out.isEmpty() ? "" : "; left out:" + out));
 	}
 
-	private static int gpuCores() {
+	private static int gpuCores = Integer.MIN_VALUE;
+
+	/** The GPU's core count from the IORegistry (one ioreg run, cached), or -1 if unreadable. */
+	static synchronized int gpuCores() {
+		if (gpuCores != Integer.MIN_VALUE) return gpuCores;
 		String s = run("/usr/sbin/ioreg", "-rd1", "-c", "AGXAccelerator");
 		java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"gpu-core-count\"\\s*=\\s*(\\d+)").matcher(s);
-		return m.find() ? Integer.parseInt(m.group(1)) : -1;
+		return gpuCores = m.find() ? Integer.parseInt(m.group(1)) : -1;
 	}
 
 	private static long memBytes() {
@@ -200,6 +207,9 @@ public final class Profile {
 			# Art style: epic, storybook or natural.
 			mcopt.shade.look=epic
 			#
+			# A performance line in the log every N seconds (fps and 1%% low, frame and GPU times, GPU memory, thermal state); 0 = off.
+			#mcopt.log.tick=5
+			#
 			# Far terrain (EXPERIMENTAL, off by default; for Macs with 10 or more GPU cores): remove the # below.
 			#mcopt.lod=true
 			""".formatted(name);
@@ -208,7 +218,7 @@ public final class Profile {
 			Files.writeString(cfg, text, StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE_NEW, java.nio.file.StandardOpenOption.WRITE);
 			System.out.println("[mcopt] profile: wrote " + cfg + " (profile=" + name + ")");
 		} catch (IOException e) {
-			System.out.println("[mcopt] profile: can't write " + cfg + ": " + e);
+			Log.warn("[mcopt] profile: can't write " + cfg, e);
 		}
 	}
 

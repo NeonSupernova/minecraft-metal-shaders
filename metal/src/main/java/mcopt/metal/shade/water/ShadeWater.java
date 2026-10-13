@@ -237,14 +237,14 @@ public final class ShadeWater {
 					WaterNative.setHz(state, mcopt.metal.shade.ShadeRender.pipeline(library(), "shade_fs_vs", "shade_water_hz_fs", mcopt.metal.shade.ShadeRender.R32F,
 						mcopt.metal.shade.ShadeRender.BLEND_NONE));
 				} catch (Throwable e) {
-					System.out.println("[mcopt] shade: water coarse depth failed, SSR finds nothing: " + e);
+					mcopt.metal.Log.warn("[mcopt] shade: water coarse depth failed, SSR finds nothing", e);
 				}
 			}
 			System.out.println("[mcopt] shade: water on (ssr " + SSR + (SSR_QUAD ? " quad" : "") + ", " + SSR_STEPS + " steps, " + SSR_DIST + " blocks; waves " + WAVES
 				+ ", detail " + DETAIL + ", ssr edges " + SSR_EDGE + ", real-time clock " + CLOCK + ", caustics " + CAUSTICS + ", foam " + FOAM + ", glossy " + GLOSSY + ", prev-frame reflections " + SSR_PREV + ", baked waves " + BAKE + ", glint graze " + GLINT_GRAZE + ", edge reflections " + EDGE_REFL + ", style " + (SMOOTH ? "photon (calm " + CALM + ", ripple " + RIPPLE + ")" : "m21") + ")");
 		} catch (Throwable e) {
 			failed = true;
-			System.out.println("[mcopt] shade: water setup failed, M1 water from now on: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: water setup failed, M1 water from now on", e);
 		}
 		return state != 0;
 	}
@@ -290,7 +290,7 @@ public final class ShadeWater {
 			WaterNative.wavesDone(enc, state);
 		} catch (Throwable e) {
 			bakeFailed = true;
-			System.out.println("[mcopt] shade: water wave bake failed, per-pixel waves from now on: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: water wave bake failed, per-pixel waves from now on", e);
 		}
 	}
 

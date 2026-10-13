@@ -504,7 +504,7 @@ final class Recorder {
 			VT_STATS.invokeExact(this.vt, a);
 			for (int i = 0; i < 7; i++) st[i] = MemoryUtil.memGetLong(a + 8L * i);
 		} catch (Throwable e) {
-			System.out.println("mcopt-rec: closing failed: " + e);
+			mcopt.metal.Log.warn("mcopt-rec: closing failed", e);
 			return;
 		}
 		try {
@@ -586,8 +586,7 @@ final class Recorder {
 				}
 			}
 		} catch (Throwable e) {
-			System.out.println("mcopt-rec: writer failed: " + e);
-			e.printStackTrace(System.out);
+			mcopt.metal.Log.warn("mcopt-rec: writer failed", e);
 		}
 		// CPU the recording took outside the render thread: ffmpeg's (while it still runs) and this thread's
 		double ffCpu = this.ffmpeg == null ? 0 : this.ffmpeg.info().totalCpuDuration().map(d -> d.toNanos() / 1e9).orElse(-1.0);

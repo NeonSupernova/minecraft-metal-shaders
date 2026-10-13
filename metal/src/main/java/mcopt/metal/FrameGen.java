@@ -343,7 +343,7 @@ public final class FrameGen {
 			long err = stack.nmalloc(1, 1024);
 			int format = MetalConst.pixelFormat(main.getColorTexture().getFormat());
 			if ((int) N.RESIZE.invokeExact(this.encoder.ctx, this.fg, main.width, main.height, format, err, 1024) == 0) {
-				System.out.println("mcopt-framegen: no frame interpolation: " + MemoryUtil.memUTF8(err));
+				Log.warn("mcopt-framegen: no frame interpolation: " + MemoryUtil.memUTF8(err));
 				this.width = this.height = -1;
 				return false;
 			}
@@ -537,7 +537,7 @@ public final class FrameGen {
 				if (!Files.exists(file)) Files.writeString(file, "kind,target,presented,handler,start,done\n");
 				Files.writeString(file, this.csv, java.nio.file.StandardOpenOption.APPEND);
 			} catch (java.io.IOException e) {
-				System.out.println("mcopt-framegen: log failed: " + e);
+				Log.warn("mcopt-framegen: log failed", e);
 			}
 			this.csv.setLength(0);
 		}
@@ -659,7 +659,7 @@ public final class FrameGen {
 					for (int i = 0; i < names.length; i++) Files.write(dir.resolve(String.format("%02d-%s.raw", frame, names[i])), data[i]);
 					Files.writeString(dir.resolve("params.txt"), line, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
 				} catch (java.io.IOException e) {
-					System.out.println("mcopt-framegen: sequence dump failed: " + e);
+					Log.warn("mcopt-framegen: sequence dump failed", e);
 				}
 			});
 		});
@@ -734,7 +734,7 @@ public final class FrameGen {
 			png(dir.resolve(kind + "-3-generated.png"), w, h, composite);
 			System.out.println("mcopt-framegen: dumped " + what + " to " + dir);
 		} catch (Exception e) {
-			System.out.println("mcopt-framegen: dump failed: " + e);
+			Log.warn("mcopt-framegen: dump failed", e);
 		}
 	}
 

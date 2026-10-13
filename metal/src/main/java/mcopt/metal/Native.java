@@ -54,6 +54,9 @@ final class Native {
 	private static final MethodHandle CMD_GPU_US = fn("mc_cmd_gpu_us", false, JAVA_DOUBLE, JAVA_LONG);
 	private static final MethodHandle DIAG_ENABLE = fn("mc_diag_enable", false, null, JAVA_DOUBLE);
 	private static final MethodHandle CPU_FLAGS = fn("mc_cpu_flags", false, null, JAVA_INT);
+	private static final MethodHandle LATENCY_ACTIVITY = fn("mc_latency_activity", false, JAVA_INT);
+	private static final MethodHandle WORKING_SET = fn("mc_working_set", false, JAVA_LONG, JAVA_LONG);
+	private static final MethodHandle POWER_STATE = fn("mc_power_state", false, JAVA_INT);
 	private static final MethodHandle POOL_ADD = fn("mc_pool_add", false, JAVA_INT, JAVA_LONG, JAVA_LONG, JAVA_INT);
 	private static final MethodHandle POOL_TAKE = fn("mc_pool_take", false, JAVA_LONG, JAVA_LONG, JAVA_LONG);
 	private static final MethodHandle BUFFER_LENGTH = fn("mc_buffer_length", true, JAVA_LONG, JAVA_LONG);
@@ -130,16 +133,50 @@ final class Native {
 		return LIB;
 	}
 
+	/**
+	 * libmcmetal.dylib on disk. Kept per build under ~/Library/Caches/mcopt/natives/<content hash>/ and reused: a launch
+	 * writes nothing when the jar's library is already there, macOS checks a known file instead of a new one each time,
+	 * and a crash leaves no temp copy behind. The file is written whole and then moved into place, so a half-written
+	 * library is never loaded. If the cache can't be used, a temp copy as before.
+	 */
 	private static Path extract() {
+		byte[] bytes;
 		try (InputStream in = Native.class.getResourceAsStream("/natives/libmcmetal.dylib")) {
+			if (in == null) throw new IllegalStateException("libmcmetal.dylib is missing from the mod jar");
+			bytes = in.readAllBytes();
+		} catch (IOException e) {
+			throw new IllegalStateException("can't read libmcmetal.dylib", e);
+		}
+		try {
+			Path dir = Path.of(System.getProperty("user.home"), "Library", "Caches", "mcopt", "natives", hash(bytes));
+			Path lib = dir.resolve("libmcmetal.dylib");
+			if (Files.isRegularFile(lib) && Files.size(lib) == bytes.length) return lib;
+			Files.createDirectories(dir);
+			Path tmp = Files.createTempFile(dir, "libmcmetal", ".tmp");
+			Files.write(tmp, bytes);
+			Files.move(tmp, lib, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			return lib;
+		} catch (IOException | RuntimeException e) {
+			Log.warn("[mcopt] can't use ~/Library/Caches/mcopt for the native library; loading a temp copy instead (works the same, written every launch)", e);
+		}
+		try {
 			Path dir = Files.createTempDirectory("mcmetal");
 			Path lib = dir.resolve("libmcmetal.dylib");
-			Files.copy(in, lib, StandardCopyOption.REPLACE_EXISTING);
+			Files.write(lib, bytes);
 			lib.toFile().deleteOnExit();
 			dir.toFile().deleteOnExit();
 			return lib;
 		} catch (IOException e) {
 			throw new IllegalStateException("can't extract libmcmetal.dylib", e);
+		}
+	}
+
+	private static String hash(byte[] bytes) {
+		try {
+			byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+			return java.util.HexFormat.of().formatHex(d, 0, 12);
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new IllegalStateException(e);
 		}
 	}
 
@@ -179,6 +216,9 @@ final class Native {
 	static long cadencePresented(int slot) { try { return (long) CADENCE_PRESENTED.invokeExact(slot); } catch (Throwable t) { throw rethrow(t); } }
 	static double cmdGpuMicros(long cmd) { try { return (double) CMD_GPU_US.invokeExact(cmd); } catch (Throwable t) { throw rethrow(t); } }
 	static void diagEnable(double thresholdMs) { try { DIAG_ENABLE.invokeExact(thresholdMs); } catch (Throwable t) { throw rethrow(t); } }
+	static long workingSet(long ctx) { try { return (long) WORKING_SET.invokeExact(ctx); } catch (Throwable t) { throw rethrow(t); } }
+	static int powerState() { try { return (int) POWER_STATE.invokeExact(); } catch (Throwable t) { throw rethrow(t); } }
+	static boolean latencyActivity() { try { return (int) LATENCY_ACTIVITY.invokeExact() != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static void cpuFlags(int flags) { try { CPU_FLAGS.invokeExact(flags); } catch (Throwable t) { throw rethrow(t); } }
 	static boolean poolAdd(long ctx, long size, int delayMs) { try { return (int) POOL_ADD.invokeExact(ctx, size, delayMs) != 0; } catch (Throwable t) { throw rethrow(t); } }
 	static long poolTake(long minLength, long maxLength) { try { return (long) POOL_TAKE.invokeExact(minLength, maxLength); } catch (Throwable t) { throw rethrow(t); } }

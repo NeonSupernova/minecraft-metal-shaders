@@ -94,7 +94,7 @@ public final class TaaConfig {
 		try {
 			return Float.parseFloat(v.trim());
 		} catch (NumberFormatException e) {
-			System.out.println("[mcopt] shade: bad " + key + "=" + v + ", using " + fallback);
+			mcopt.metal.Log.warn("[mcopt] shade: " + key + "=" + v + " (config/mcopt.properties or a -D flag) is not valid, using " + fallback);
 			return fallback;
 		}
 	}

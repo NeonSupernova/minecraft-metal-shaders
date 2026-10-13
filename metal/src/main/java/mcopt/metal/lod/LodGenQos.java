@@ -50,7 +50,7 @@ public final class LodGenQos {
 			int rc = (int) setSelf.invokeExact(cls, 0);
 			System.out.println("mcopt-lod: QoS 0x" + Integer.toHexString(cls) + " for " + role + " (" + Thread.currentThread().getName() + "): " + rc);
 		} catch (Throwable t) {
-			System.out.println("mcopt-lod: QoS for " + role + ": " + t);
+			mcopt.metal.Log.warn("mcopt-lod: can't set the thread QoS for " + role + "; it runs at the default priority", t);
 		}
 	}
 }

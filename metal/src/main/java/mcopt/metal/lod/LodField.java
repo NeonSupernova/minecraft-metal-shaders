@@ -118,8 +118,7 @@ final class LodField {
 				if (j.task != null) j.task.run();
 				else this.generate(j.key);
 			} catch (Throwable t) {
-				System.out.println("mcopt-lod: job failed: " + t);
-				t.printStackTrace(System.out);
+				mcopt.metal.Log.warnOnce("lod job", "mcopt-lod: a far-terrain generation job failed; its tile stays missing", t);
 				if (j.task == null) this.pending.remove(j.key);
 			}
 		}
@@ -336,7 +335,7 @@ final class LodField {
 			}
 			Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
-			System.out.println("mcopt-lod: cache write failed: " + e);
+			mcopt.metal.Log.warn("mcopt-lod: cache write failed", e);
 		}
 	}
 
@@ -797,7 +796,7 @@ final class LodField {
 			try {
 				this.scanResult = this.scanScreen(cx, cz, camY, px, pz, vp, wx, wz, masked);
 			} catch (RuntimeException e) {
-				System.out.println("mcopt-lod: scan failed: " + e);
+				mcopt.metal.Log.warnOnce("lod scan", "mcopt-lod: the far-terrain screen scan failed; the last scan is kept", e);
 			} finally {
 				this.scanning.set(false);
 			}

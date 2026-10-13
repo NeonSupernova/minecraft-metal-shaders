@@ -81,8 +81,7 @@ public final class ShadeBindings {
 			// Nothing to bind: the shaded pipelines can't be helped, but at least vanilla's face shade comes back.
 			failed = true;
 			state = 0;
-			System.out.println("[mcopt] shade: setup failed, shading stays off: " + e);
-			e.printStackTrace();
+			mcopt.metal.Log.warn("[mcopt] shade: setup failed, shading stays off", e);
 			Shade.setFaceShadeOff(false);
 			return false;
 		}
@@ -101,8 +100,7 @@ public final class ShadeBindings {
 			// Valid resources are bound (ring, dummy map, an unused LUT texture) and every frame is packed as "vanilla"
 			// (ShadeFrame.DIM_VANILLA): the shaded pipelines take their vanilla paths, with vanilla's face shade put back.
 			fallback = true;
-			System.out.println("[mcopt] shade: setup failed, vanilla look from now on: " + e);
-			e.printStackTrace();
+			mcopt.metal.Log.warn("[mcopt] shade: setup failed, vanilla look from now on", e);
 			for (int i = 0; i < RING; i++) {
 				ShadeFrameUpdater.FRAME.dimension = ShadeFrame.DIM_VANILLA;
 				ShadeFrameUpdater.FRAME.pack(views[i]);

@@ -39,8 +39,7 @@ final class LodGenBench {
 			try {
 				run(noise, field);
 			} catch (Throwable e) {
-				System.out.println("mcopt-lod genbench: failed: " + e);
-				e.printStackTrace(System.out);
+				mcopt.metal.Log.warn("mcopt-lod genbench: failed", e);
 			}
 		}, "mcopt-lod-genbench");
 		t.setDaemon(true);

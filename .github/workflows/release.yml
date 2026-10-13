@@ -55,6 +55,22 @@ jobs:
           # the jar and fabric.mod.json carry the release version, not upstream mcopt's
           sed -i '' "s/^version = '.*'$/version = '$v+mc$mc'/" metal/build.gradle
 
+      - name: Toolchain
+        run: |
+          # what built this jar: Xcode, the macOS SDK the native library compiled against, Java, and every Xcode on the runner
+          xcodebuild -version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version) at $(xcrun --sdk macosx --show-sdk-path)"
+          java -version 2>&1 | head -1
+          ls -d /Applications/Xcode*.app 2>/dev/null || true
+          # Metal / MetalFX / QuartzCore declarations introduced in macOS 27 by any installed SDK (what a 27 SDK would let the native code use)
+          for x in /Applications/Xcode*.app; do
+            sdk="$x/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
+            [ -d "$sdk" ] || continue
+            n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/Metal.framework/Headers" "$sdk/System/Library/Frameworks/MetalFX.framework/Headers" "$sdk/System/Library/Frameworks/QuartzCore.framework/Headers" 2>/dev/null | wc -l | tr -d ' ')
+            echo "$x: $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
+            [ "$n" -gt 0 ] && grep -rhE -B2 "macos\(27" "$sdk/System/Library/Frameworks/Metal.framework/Headers" "$sdk/System/Library/Frameworks/MetalFX.framework/Headers" "$sdk/System/Library/Frameworks/QuartzCore.framework/Headers" | grep -E "^(@property|- \(|\+ \(|typedef|MTL_EXPORT|API_AVAILABLE|@interface|@protocol|.*MTL[A-Z][A-Za-z0-9]+)" | head -200 || true
+          done
+
       - name: Build
         run: ./gradlew :metal:build --console=plain
 

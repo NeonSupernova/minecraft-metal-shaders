@@ -97,6 +97,14 @@ Ctx *mc_create(char *name, int nameCap, char *err, int errCap) {
 uint64_t mc_max_buffer_length(Ctx *ctx) { return ctx->device.maxBufferLength; }
 /* mcopt-shade M3.3 (robustness checks): bytes the device has allocated (MTLDevice.currentAllocatedSize), for the rejoin leak check. */
 uint64_t mc_device_allocated(Ctx *ctx) { return ctx->device.currentAllocatedSize; }
+// Telemetry (Telemetry.java): the GPU memory macOS budgets for this process before it starts paging (MTLDevice), and the
+// machine's thermal state (0 nominal, 1 fair, 2 serious, 3 critical: macOS throttles from serious) with bit 8 set while
+// Low Power Mode is on.
+uint64_t mc_working_set(Ctx *ctx) { return ctx->device.recommendedMaxWorkingSetSize; }
+int mc_power_state(void) {
+	NSProcessInfo *p = [NSProcessInfo processInfo];
+	return (int) p.thermalState | ([p isLowPowerModeEnabled] ? 0x100 : 0);
+}
 static int poolRelease(id obj);
 void mc_release(id obj) {
 	if (!poolRelease(obj)) [obj release];
@@ -710,6 +718,20 @@ static int sameTargets(Enc *enc, int count, id<MTLTexture> const *colors, const 
 // entry); mc_render_begin fills one kept MTLRenderPassDescriptor, every field it may hold reset, instead of a new one per pass
 // (Metal copies the descriptor when it makes the encoder).
 static int cpuPass;
+
+// The game asks macOS for latency-critical scheduling while the Metal backend runs: no App Nap (which throttles timers and
+// the render thread when the window is covered or behind another app), and the highest timer and I/O precision the
+// system offers (no timer coalescing, so the frame pacer's waits end on time). Idle system sleep stays allowed, so a
+// paused game doesn't keep the Mac awake. Held for the life of the process; returns 0 if macOS refused it.
+int mc_latency_activity(void) {
+	static id token;
+	if (token) return 1;
+	@autoreleasepool {
+		token = [[[NSProcessInfo processInfo] beginActivityWithOptions:NSActivityUserInitiatedAllowingIdleSystemSleep | NSActivityLatencyCritical
+			reason:@"Minecraft is rendering with Metal"] retain];
+	}
+	return token != nil;
+}
 
 void mc_cpu_flags(int flags) {
 	cpuPass = flags & 1;

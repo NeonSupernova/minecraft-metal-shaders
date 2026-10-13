@@ -148,7 +148,7 @@ public final class Lod {
 		try {
 			Object encoder = MetalBridge.encoder(((FrontendCommandEncoder) RenderSystem.getDevice().createCommandEncoder()).backend());
 			if (encoder == null) {
-				System.out.println("mcopt-lod: the game isn't on the Metal backend; far terrain disabled");
+				mcopt.metal.Log.warn("mcopt-lod: the game isn't on the Metal backend; far terrain disabled");
 				failed = true;
 				return null;
 			}
@@ -157,8 +157,7 @@ public final class Lod {
 			return instance;
 		} catch (RuntimeException e) {
 			failed = true;
-			System.out.println("mcopt-lod: far terrain disabled: " + e);
-			e.printStackTrace(System.out);
+			mcopt.metal.Log.warn("mcopt-lod: far terrain could not start and is off for this session (mcopt.lod=false in config/mcopt.properties hides this)", e);
 			return null;
 		}
 	}
@@ -205,8 +204,7 @@ public final class Lod {
 			failed = true;
 			instance = null;
 			activeReach = 0;
-			System.out.println("mcopt-lod: far terrain stopped: " + e);
-			e.printStackTrace(System.out);
+			mcopt.metal.Log.warn("mcopt-lod: far terrain stopped after an error and is off for this session", e);
 		}
 	}
 
@@ -227,8 +225,7 @@ public final class Lod {
 			}
 			if (l.seam != null) l.seamFrame();
 		} catch (RuntimeException e) {
-			System.out.println("mcopt-lod seam: probe failed: " + e);
-			e.printStackTrace(System.out);
+			mcopt.metal.Log.warn("mcopt-lod seam: probe failed", e);
 		}
 	}
 
@@ -541,7 +538,7 @@ public final class Lod {
 				this.camZ));
 			System.out.println("mcopt-lod: dumped frame " + this.frames + " to " + dir);
 		} catch (IOException e) {
-			System.out.println("mcopt-lod: dump failed: " + e);
+			mcopt.metal.Log.warn("mcopt-lod: dump failed", e);
 		}
 	}
 
@@ -569,7 +566,7 @@ public final class Lod {
 			}
 			return handle;
 		} catch (RuntimeException e) {
-			if (this.atlasMips != -2) System.out.println("mcopt-lod: no block atlas for the near textures: " + e);
+			if (this.atlasMips != -2) mcopt.metal.Log.warn("mcopt-lod: no block atlas for the near textures", e);
 			this.atlasMips = -2;
 			return 0;
 		}
@@ -996,7 +993,7 @@ public final class Lod {
 			f.setAccessible(true);
 			return f;
 		} catch (ReflectiveOperationException | RuntimeException e) {
-			System.out.println("mcopt-lod: no Sodium render lists for the hand-off: " + e);
+			mcopt.metal.Log.warn("mcopt-lod: no Sodium render lists for the hand-off", e);
 			return null;
 		}
 	}

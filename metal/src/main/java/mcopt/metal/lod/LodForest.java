@@ -126,7 +126,7 @@ final class LodForest {
 			List<FeatureSorter.StepFeatureData> steps = ((Supplier<List<FeatureSorter.StepFeatureData>>) f.get(generator)).get();
 			return VEG < steps.size() ? steps.get(VEG) : null;
 		} catch (ReflectiveOperationException | RuntimeException e) {
-			System.out.println("mcopt-lod: no feature list (" + e + "): far trees are impostors");
+			mcopt.metal.Log.warn("mcopt-lod: no feature list; far trees are drawn as impostors", e);
 			return null;
 		}
 	}
@@ -227,7 +227,7 @@ final class LodForest {
 			} catch (RuntimeException e) {
 				if (this.failures.incrementAndGet() <= 5) {
 					var id = this.level.registryAccess().lookupOrThrow(Registries.PLACED_FEATURE).getKey(step.features().get(idx));
-					System.out.println("mcopt-lod: tree feature " + id + " failed in chunk " + chunkX + "," + chunkZ + ": " + e);
+					mcopt.metal.Log.warnOnce("lod tree " + id, "mcopt-lod: tree feature " + id + " failed (first in chunk " + chunkX + "," + chunkZ + "); those far trees are skipped", e);
 				}
 			}
 		}

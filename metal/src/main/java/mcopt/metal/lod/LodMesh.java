@@ -249,7 +249,7 @@ final class LodMesh implements LodClip.Listener {
 				if (snap != null) this.resultSnaps.put(block, snap);
 				this.results.add(new long[] {k, s, block, words, neighbors, ver != null ? ver : -1});
 			} catch (RuntimeException e) {
-				System.out.println("mcopt-lod: mesh job failed: " + e);
+				mcopt.metal.Log.warnOnce("lod mesh", "mcopt-lod: a far-terrain mesh job failed; that tile is not drawn", e);
 			}
 		}
 		MemoryUtil.nmemFree(header);

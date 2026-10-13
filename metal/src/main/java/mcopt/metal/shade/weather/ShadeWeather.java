@@ -297,7 +297,7 @@ public final class ShadeWeather {
 			noiseTexture = tex;
 		} catch (Throwable e) {
 			noiseFailed = true;
-			System.out.println("[mcopt] shade: weather noise bake failed, per-pixel noise from now on: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: weather noise bake failed, per-pixel noise from now on", e);
 		}
 	}
 

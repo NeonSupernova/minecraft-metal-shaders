@@ -180,6 +180,7 @@ final class MetalEncoder implements CommandEncoderBackend {
 			this.afterThisFrame.add(() -> this.accumulateProfile(cmd, s, n));
 		}
 		this.inFlight.add(new Frame(this.submitIndex++, cmd, this.afterThisFrame));
+		if (Telemetry.ON) Telemetry.frame();
 		if (TracePhase.PHASE != null && TRACE_SUBMIT < 0 && TracePhase.in()) TRACE_SUBMIT = this.submitIndex + TracePhase.OFFSET;
 		if (mcopt.metal.cpu.Cpu.FENCE_STATS) mcopt.metal.cpu.Cpu.fenceTick(this.submitIndex); // opt-in
 		this.afterThisFrame = new ArrayList<>();
@@ -248,7 +249,9 @@ final class MetalEncoder implements CommandEncoderBackend {
 		} finally {
 			MetalEvents.end(event);
 		}
-		this.waitNanos += System.nanoTime() - waitStart;
+		long waited = System.nanoTime() - waitStart;
+		this.waitNanos += waited;
+		if (Telemetry.ON) Telemetry.retired(Native.cmdGpuStart(frame.cmd), Native.cmdGpuEnd(frame.cmd), waited);
 		frame.after.forEach(Runnable::run);
 		Native.release(frame.cmd);
 		this.completedIndex = frame.index;

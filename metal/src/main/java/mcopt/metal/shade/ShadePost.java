@@ -232,9 +232,8 @@ public final class ShadePost {
 			return true;
 		} catch (Throwable e) {
 			failed = true;
-			System.out.println("[mcopt] shade: HDR post chain failed, M1's tone curve instead: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: HDR post chain failed, M1's tone curve instead", e);
 			ShadeRobust.postFailed(); // M3.3: vanilla clouds then (M1's sky has no volumetric-cloud composite)
-			e.printStackTrace();
 			return false;
 		}
 	}
@@ -494,7 +493,7 @@ public final class ShadePost {
 				try {
 					o.hook.run(c);
 				} catch (RuntimeException e) {
-					System.out.println("[mcopt] shade: post hook failed: " + e);
+					mcopt.metal.Log.warnOnce("post hook", "[mcopt] shade: a post-processing hook failed and was skipped this frame", e);
 				}
 			}
 		}
@@ -522,7 +521,7 @@ public final class ShadePost {
 						srcU = srcV = 1f;
 					}
 				} catch (RuntimeException e) {
-					System.out.println("[mcopt] shade: resolver failed: " + e);
+					mcopt.metal.Log.warnOnce("resolver", "[mcopt] shade: the scene resolver failed; this frame uses the unresolved scene", e);
 				}
 			}
 		}

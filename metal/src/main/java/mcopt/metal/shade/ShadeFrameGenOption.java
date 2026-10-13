@@ -76,7 +76,7 @@ public final class ShadeFrameGenOption {
 			Files.write(file, lines, StandardCharsets.UTF_8);
 			System.out.println("[mcopt] shade: frame generation " + (value.equals("true") ? "on" : "off") + " from the next start (" + file + ")");
 		} catch (IOException e) {
-			System.out.println("[mcopt] shade: could not save the frame generation choice: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: could not save the frame generation choice", e);
 		}
 	}
 }

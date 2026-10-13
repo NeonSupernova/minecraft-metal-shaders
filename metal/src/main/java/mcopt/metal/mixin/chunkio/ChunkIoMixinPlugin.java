@@ -33,7 +33,7 @@ public final class ChunkIoMixinPlugin implements IMixinConfigPlugin {
 		String name = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
 		if (!ChunkIo.mixinEnabled(name)) return false;
 		if (FabricLoader.getInstance().isModLoaded("c2me")) {
-			System.out.println("mcopt-chunk: " + name + " not applied: c2me is loaded");
+			mcopt.metal.Log.info("mcopt-chunk: " + name + " not applied: c2me is loaded");
 			return false;
 		}
 		return true;

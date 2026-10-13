@@ -114,7 +114,7 @@ final class ShadowCasters {
 			f.setAccessible(true);
 			return f;
 		} catch (ReflectiveOperationException | RuntimeException e) {
-			System.out.println("[mcopt] shade: no Sodium render section manager, no shadow casters: " + e);
+			mcopt.metal.Log.warn("[mcopt] shade: no Sodium render section manager, no shadow casters", e);
 			return null;
 		}
 	}
