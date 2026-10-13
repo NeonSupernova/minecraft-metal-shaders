@@ -75,7 +75,7 @@ jobs:
         run: |
           # what builds this jar: Xcode, the macOS SDK the native library compiles against (and how many macOS 27 Metal APIs it
           # declares: 0 until the runner has a macOS 27 SDK), Java
-          xcodebuild -version | head -1
+          xcodebuild -version | sed -n 1p # sed reads it all: head closing the pipe early crashes xcodebuild
           sdk=$(xcrun --sdk macosx --show-sdk-path)
           n=$(grep -rhoE "macos\(27[.0-9]*\)" "$sdk/System/Library/Frameworks/"{Metal,MetalFX,QuartzCore}.framework/Headers 2>/dev/null | wc -l | tr -d ' ')
           echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version), $n macOS 27 declarations in Metal/MetalFX/QuartzCore"
@@ -96,6 +96,38 @@ jobs:
           path: dist/*.jar
           compression-level: 0 # a jar is already a zip
           retention-days: 30
+
+  sdk27:
+    # macOS 27 SDK preview (GitHub's xcode-27 image): lists the Metal, MetalFX and QuartzCore APIs new in macOS 27 and
+    # compiles the native library against that SDK, so new APIs can be adopted (behind @available) before the default
+    # runner moves. Informational: never blocks a build or a release.
+    if: github.event_name != 'push'
+    runs-on: xcode-27
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: macOS 27 APIs
+        run: |
+          xcodebuild -version | sed -n 1p
+          sdk=$(xcrun --sdk macosx --show-sdk-path)
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+          for f in Metal MetalFX QuartzCore; do
+            h="$sdk/System/Library/Frameworks/$f.framework/Headers"
+            n=$(grep -rlE "macos\(27" "$h" 2>/dev/null | wc -l | tr -d ' ')
+            echo "::group::$f: macOS 27 declarations in $n headers"
+            grep -rnE -B3 "macos\(27" "$h" 2>/dev/null | sed "s|$h/||" | head -400
+            echo "::endgroup::"
+          done
+
+      - name: Native library against the macOS 27 SDK
+        run: |
+          cd metal/src/main/native
+          clang -fno-objc-arc -O2 -Wall -arch arm64 -mmacosx-version-min=15.0 -dynamiclib -install_name @rpath/libmcmetal.dylib \
+            -framework AppKit -framework CoreGraphics -framework CoreVideo -framework Foundation -framework Metal -framework MetalFX -framework QuartzCore \
+            -o "$RUNNER_TEMP/libmcmetal.dylib" mcmetal.m mcterrain.m mcprobe.m mcframegen.m mclod.m lodseam.m lodmesh.c lodnoise.c rec.m mcshade.m mcshadow.m mcwater.m mcvl.m mctaa.m mcdynlight.m mcxdr.m mcclouds.m
+          ls -l "$RUNNER_TEMP/libmcmetal.dylib"
 
   publish:
     needs: build
