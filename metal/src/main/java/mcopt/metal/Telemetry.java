@@ -33,6 +33,8 @@ public final class Telemetry {
 	private static boolean overBudget;
 	/** For the crash report (any thread): the device line and the last tick line. */
 	private static volatile String device = "not created", lastTick = "none yet";
+	/** F3's Metal line (MetalDebugMixin), from the last tick; null until the first one. */
+	private static volatile String f3;
 
 	private Telemetry() {
 	}
@@ -94,6 +96,9 @@ public final class Telemetry {
 					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
 				lastTick = line.substring("[mcopt tick] ".length());
+				f3 = String.format("Metal: %s | wait %.2f ms | VRAM %.2f/%.1f GB%s | %s", gpus > 0 ? String.format("GPU %.1f ms (p99 %.1f)",
+						pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "GPU n/a", waitNs / 1e6 / n, gb(allocated), gb(workingSet),
+					hz > 0 ? String.format(" | %.0f Hz", hz) : "", thermal(power) + ((power & 0x100) != 0 ? ", low power" : ""));
 				boolean over = workingSet > 0 && allocated > workingSet;
 				if (over && !overBudget) {
 					Log.warn(String.format("[mcopt] GPU memory %.2f GB is over macOS's %.1f GB budget: expect stutter from paging; lower the shader preset or render distance",
@@ -109,6 +114,11 @@ public final class Telemetry {
 		frames = gpus = 0;
 		waitNs = 0;
 		tickStartNs = now;
+	}
+
+	/** F3's Metal line, null before the first tick (or with mcopt.log.tick=0). */
+	public static String f3Line() {
+		return f3;
 	}
 
 	/**
