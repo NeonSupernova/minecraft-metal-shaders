@@ -32,6 +32,8 @@ public final class Profile {
 	static final String DEFAULT = "alpha";
 	/** The profile applied (from -Dmcopt.profile, config/mcopt.properties or the default), for the startup report. */
 	static volatile String active = DEFAULT;
+	/** Why the Metal backend is off when mcopt turned it off itself (for the log and the crash report), null otherwise. */
+	public static volatile String metalOff;
 
 	private Profile() {
 	}
@@ -40,7 +42,34 @@ public final class Profile {
 		if (applied) return;
 		applied = true;
 		applyFlags();
+		String explicitMetal = System.getProperty("mcopt.metal"); // the player's own setting, before any fallback below
 		distantHorizons();
+		iris(explicitMetal);
+	}
+
+	/**
+	 * Iris only runs on the OpenGL backend: at startup it casts the game's GPU device to OpenGL's
+	 * (Iris.setDebug -> IrisRenderSystem.getGlDevice: ClassCastException MetalDevice -> GlDevice, alpha.9 on
+	 * Fabulously Optimized) and its renderer does the same to buffers and textures throughout, so it can't be patched
+	 * around. With Iris installed the game starts on OpenGL instead of crashing, mcopt's other optimizations stay on, and
+	 * the log says how to get the Metal renderer back (disable Iris: mcopt brings its own shaders). An explicit
+	 * mcopt.metal=true wins, with a warning.
+	 */
+	private static void iris(String explicitMetal) {
+		if (!DhCompat.irisLoaded()) return;
+		if (explicitMetal != null) {
+			if (Boolean.parseBoolean(explicitMetal)) {
+				Log.warn("[mcopt] Iris is installed and mcopt.metal=true is set: Iris only runs on OpenGL and will crash on Metal at startup "
+					+ "(ClassCastException in Iris.setDebug). Disable Iris to use the Metal renderer (it has its own shaders).");
+			}
+			return;
+		}
+		if (!Boolean.parseBoolean(System.getProperty("mcopt.metal", "true"))) return; // already off (Distant Horizons with Iris)
+		System.setProperty("mcopt.metal", "false");
+		metalOff = "Iris is installed (it only runs on OpenGL)";
+		Log.warn("[mcopt] Iris is installed: Iris only runs on OpenGL and crashes on Metal, so the game uses OpenGL and the Metal "
+			+ "renderer (with its built-in shaders) is OFF; mcopt's other optimizations stay on. To get the Metal renderer, disable "
+			+ "Iris (Prism: Edit instance -> Mods -> untick Iris; or remove its jar). -Dmcopt.metal=true forces Metal anyway (Iris will crash).");
 	}
 
 	/**

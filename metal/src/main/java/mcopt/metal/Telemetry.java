@@ -156,6 +156,7 @@ public final class Telemetry {
 	public static String report() {
 		StringBuilder b = new StringBuilder();
 		try {
+			if (Profile.metalOff != null) b.append("\n\t\tMetal renderer: off, ").append(Profile.metalOff);
 			b.append("\n\t\tDevice: ").append(device).append(String.format(", GPU memory budget %.1f GB", gb(workingSet)));
 			b.append("\n\t\tProfile: ").append(Profile.active).append("; shaders ").append(Boolean.getBoolean("mcopt.shade") ? "on" : "off")
 				.append(" (preset ").append(System.getProperty("mcopt.shade.preset", "balanced")).append("); frame generation ")
