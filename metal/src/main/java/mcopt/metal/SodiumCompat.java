@@ -54,6 +54,8 @@ public final class SodiumCompat {
 		List.of("CullBiForestAccess", "CullMultiForestAccess", "CullNearbyMixin", "CullReuseManagerMixin", "CullSectionInfoMixin", "CullTaskTreeAccess", "CullTreeAccess"),
 		List.of("DirectionalVisGraphMixin", "BitArrayAccessor"));
 	private static final Map<String, Boolean> FITS = new HashMap<>();
+	private static final java.util.Set<String> OFF = new java.util.TreeSet<>();
+	private static final java.util.Set<String> OFF = new java.util.TreeSet<>();
 	private static @Nullable String version;
 	private static boolean checked;
 	private static final Map<String, byte @Nullable []> CLASSES = new HashMap<>();
@@ -83,13 +85,24 @@ public final class SodiumCompat {
 			if (!group.contains(mixin)) continue;
 			for (String member : group) {
 				if (!fits(member)) {
+					OFF.add(mixin);
 					if (!member.equals(mixin)) Log.warn("[mcopt] Sodium " + version + ": " + mixin + " off with " + member + " (they only work together)");
 					return false;
 				}
 			}
 			return true;
 		}
-		return fits(mixin);
+		boolean fits = fits(mixin);
+		if (!fits) OFF.add(mixin);
+		return fits;
+	}
+
+	/** For the crash report: the Sodium version and whether every hook applied. */
+	public static synchronized String status() {
+		String v = version();
+		if (v.isEmpty()) return "absent";
+		if (checked) return v + " (checked, all hooks)";
+		return v + " (not checked; " + (OFF.isEmpty() ? "all hooks fit" : "hooks off: " + String.join(", ", OFF)) + ")";
 	}
 
 	private static boolean fits(String mixin) {

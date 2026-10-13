@@ -31,6 +31,8 @@ public final class Telemetry {
 	private static int power = -1;
 	/** GPU memory was over the budget at the last tick: the warning is logged on crossing it, not every tick. */
 	private static boolean overBudget;
+	/** For the crash report (any thread): the device line and the last tick line. */
+	private static volatile String device = "not created", lastTick = "none yet";
 
 	private Telemetry() {
 	}
@@ -38,6 +40,7 @@ public final class Telemetry {
 	/** Once, when the Metal device exists: the startup report. */
 	static void start(long context, String deviceName) {
 		ctx = context;
+		device = deviceName;
 		try {
 			workingSet = Native.workingSet(context);
 			Runtime rt = Runtime.getRuntime();
@@ -85,10 +88,12 @@ public final class Telemetry {
 				Runtime rt = Runtime.getRuntime();
 				long allocated = Native.deviceAllocated(ctx);
 				double hz = Native.refreshHz();
-				Log.info(String.format("[mcopt tick] %.0f fps%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
+				String line;
+				Log.info(line = String.format("[mcopt tick] %.0f fps%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
 						+ " | GPU memory %.2f GB of %.1f GB | heap %.1f/%.1f GB | %s | %s",
 					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
+				lastTick = line.substring("[mcopt tick] ".length());
 				boolean over = workingSet > 0 && allocated > workingSet;
 				if (over && !overBudget) {
 					Log.warn(String.format("[mcopt] GPU memory %.2f GB is over macOS's %.1f GB budget: expect stutter from paging; lower the shader preset or render distance",
@@ -104,6 +109,28 @@ public final class Telemetry {
 		frames = gpus = 0;
 		waitNs = 0;
 		tickStartNs = now;
+	}
+
+	/**
+	 * The crash report's "Metal Shaders" section: what was rendering and how it was doing, so a report alone is enough to
+	 * tell a Metal problem from a mod conflict, a Sodium mismatch, memory pressure or a throttled machine. Any thread; never throws.
+	 */
+	public static String report() {
+		StringBuilder b = new StringBuilder();
+		try {
+			b.append("\n\t\tDevice: ").append(device).append(String.format(", GPU memory budget %.1f GB", gb(workingSet)));
+			b.append("\n\t\tProfile: ").append(Profile.active).append("; shaders ").append(Boolean.getBoolean("mcopt.shade") ? "on" : "off")
+				.append(" (preset ").append(System.getProperty("mcopt.shade.preset", "balanced")).append("); frame generation ")
+				.append(FrameGen.ENABLED ? "on" : "off");
+			b.append("\n\t\tSodium: ").append(SodiumCompat.status());
+			String conflicts = MixinConflicts.found();
+			b.append("\n\t\tYielded to other mods: ").append(conflicts.isEmpty() ? "none" : conflicts);
+			b.append("\n\t\tPower: ").append(power < 0 ? "unknown" : thermal(power) + ((power & 0x100) != 0 ? ", Low Power Mode" : ""));
+			b.append("\n\t\tLast tick: ").append(lastTick);
+		} catch (Throwable t) {
+			b.append("\n\t\t(incomplete: ").append(t).append(')');
+		}
+		return b.toString();
 	}
 
 	/** Logs a thermal or Low Power Mode change as it happens. */
