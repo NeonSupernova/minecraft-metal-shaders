@@ -2,7 +2,7 @@
 # Re-runs the M0 baselines (see work/HARNESS.md). Each config twice. ~2.5 min per run.
 W="$(cd "$(dirname "$0")/.." && pwd)"
 M="/Users/gaelquintanilla/Documents/Minecraft Metal Shaders/work/release" # (2026-10-10: the jars of the old "mcopt Metal 26.3" instance, removed)
-SODIUM="$M/sodium-fabric-0.9.3-alpha.1+mc26.3.jar"
+SODIUM="$M/sodium-fabric-0.9.2+mc26.3.jar"
 MCOPT_FORK="$W/mcopt-shade/metal/build/libs/metal-0.2.0-alpha.3.jar"   # branch shade, unmodified upstream 0.2.0-alpha.3
 S="/Users/gaelquintanilla/Documents/Minecraft Metal Shaders/work/instances-backup/mcopt Shaders 26.3/minecraft" # (2026-10-10: copy of the removed instance)
 IRIS_MODS=(--mods "$M/mcopt-0.2.0-alpha.3.jar" --mods "$SODIUM" --mods "$S/mods/iris-fabric-1.11.7+mc26.3.jar"
