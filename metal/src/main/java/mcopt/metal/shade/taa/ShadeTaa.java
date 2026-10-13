@@ -205,6 +205,7 @@ public final class ShadeTaa {
 					System.clearProperty("mcopt.shade.drs.restart");
 					DRS.restart(TaaConfig.SCALE);
 				}
+				DRS.setFps(drsFps());
 				this.scale = DRS.update();
 			}
 		} else this.scale = FIXED_FOR_DH ? Math.min(TaaConfig.SCALE, this.allocScale) : TaaConfig.SCALE;
@@ -465,5 +466,23 @@ public final class ShadeTaa {
 			result += f * (i % base);
 		}
 		return result;
+	}
+
+	/**
+	 * The frame rate dynamic resolution holds: the preset's (or mcopt.shade.drsFps), but never more than the display shows,
+	 * real frames being half of it under frame generation. On a 60 Hz monitor balanced would otherwise chase 120 fps and
+	 * throw away resolution for frames that are never seen. An explicit mcopt.shade.drsFps is kept as given.
+	 */
+	private static int drsFps() {
+		int base = DRS.baseFps();
+		if (TaaConfig.DRS_FPS_SET) return base;
+		double hz = mcopt.metal.Display.refreshHz();
+		if (hz <= 0) return base;
+		int target = Math.max(20, Math.min(base, (int) Math.round(hz / (mcopt.metal.FrameGen.ENABLED ? 2 : 1))));
+		if (target != DRS.fps()) {
+			mcopt.metal.Log.info("[mcopt] shade: dynamic resolution now holds " + target + " fps (" + Math.round(hz) + " Hz display"
+				+ (mcopt.metal.FrameGen.ENABLED ? ", frame generation doubles it" : "") + "; preset " + base + ")");
+		}
+		return target;
 	}
 }

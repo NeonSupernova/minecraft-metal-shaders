@@ -71,6 +71,8 @@ public final class TaaConfig {
 	public static final float SCALE_MIN = clamp(floatProp("mcopt.shade.scaleMin", PRESET.min), FLOOR, SCALE_MAX);
 	public static final float SCALE = clamp(floatProp("mcopt.shade.scale", PRESET.scale), SCALE_MIN, SCALE_MAX);
 	public static final boolean DRS = Boolean.parseBoolean(System.getProperty("mcopt.shade.drs", "true")) && SCALE_MIN < SCALE_MAX;
+	/** The player set mcopt.shade.drsFps: kept as given instead of following the display. */
+	public static final boolean DRS_FPS_SET = System.getProperty("mcopt.shade.drsFps") != null;
 	public static final int DRS_FPS = Math.max(20, Integer.getInteger("mcopt.shade.drsFps", PRESET.fps));
 	public static final boolean STABLE = switch (System.getProperty("mcopt.shade.taaMode", "").toLowerCase(Locale.ROOT)) {
 		case "stable" -> true;

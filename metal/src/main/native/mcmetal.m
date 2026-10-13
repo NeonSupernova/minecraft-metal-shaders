@@ -5,6 +5,7 @@
 #import "mcmetal.h"
 #import <CoreVideo/CoreVideo.h>
 #import <MetalFX/MetalFX.h>
+#import <AppKit/AppKit.h>
 #import <QuartzCore/CAMetalLayer.h>
 #import <QuartzCore/CABase.h>
 #include <mach/mach_time.h>
@@ -1146,7 +1147,11 @@ int mc_xdr_ready(id<MTLDevice> device);  // builds its pipelines; turns the outp
 int mc_xdr_compose(id<MTLCommandBuffer> cb, id<MTLTexture> src, id<MTLTexture> dst, int flip);
 id<MTLRenderPipelineState> mc_xdr_present_pso(id<MTLDevice> device);
 
+// The game window's layer, for the pacer to follow its display (followDisplay); not retained: it lives as long as the window.
+static CAMetalLayer *paceLayer;
+
 void mc_layer_configure(Ctx *ctx, CAMetalLayer *layer, int width, int height, int vsync) {
+	paceLayer = layer;
 	layer.device = ctx->device;
 	if (mc_xdr_on() && mc_xdr_ready(ctx->device)) { // EDR: linear extended Display P3 in half floats, values above 1 brighter than SDR white
 		layer.pixelFormat = MTLPixelFormatRGBA16Float;
@@ -1188,11 +1193,43 @@ static CVReturn onRefresh(CVDisplayLinkRef link, const CVTimeStamp *now, const C
 	return kCVReturnSuccess;
 }
 
+static CVDisplayLinkRef paceLink;
+static CGDirectDisplayID paceDisplay;
+
 static void startDisplayLink(void) {
 	CVDisplayLinkRef link;
-	if (CVDisplayLinkCreateWithCGDisplay(CGMainDisplayID(), &link) != kCVReturnSuccess) return;
+	paceDisplay = CGMainDisplayID();
+	if (CVDisplayLinkCreateWithCGDisplay(paceDisplay, &link) != kCVReturnSuccess) return;
 	CVDisplayLinkSetOutputCallback(link, onRefresh, NULL);
 	CVDisplayLinkStart(link); // runs for the life of the process
+	paceLink = link;
+}
+
+// The pacer's refresh grid follows the display the game's window is on, not the main display: with several displays (a
+// 120 Hz laptop panel and a 60 Hz monitor, say) the window can sit on one while the main display is the other, and frames
+// paced for the wrong grid judder or miss refreshes. Checked every 30 paced frames from the render thread (the main thread
+// on macOS, so AppKit may be asked); a move retargets the display link, whose next callback brings the new grid.
+
+// The screen the game's window is on (nil before the window exists). Main thread only (AppKit); autoreleased.
+static NSScreen *windowScreen(void) {
+	if (!paceLayer) return nil;
+	id d = paceLayer.delegate;
+	NSWindow *w = d && [d isKindOfClass:[NSView class]] ? ((NSView *) d).window : nil;
+	for (CALayer *l = paceLayer; !w && l; l = l.superlayer) { // a hosted layer: the view is the delegate of an ancestor
+		id dd = l.delegate;
+		if (dd && [dd isKindOfClass:[NSView class]]) w = ((NSView *) dd).window;
+	}
+	return w.screen;
+}
+
+static void followDisplay(void) {
+	static int frames;
+	if (!paceLink || !paceLayer || ++frames % 30 != 1) return;
+	@autoreleasepool {
+		NSNumber *n = windowScreen().deviceDescription[@"NSScreenNumber"];
+		CGDirectDisplayID display = n ? (CGDirectDisplayID) n.unsignedIntValue : 0;
+		if (display && display != paceDisplay && CVDisplayLinkSetCurrentCGDisplay(paceLink, display) == kCVReturnSuccess) paceDisplay = display;
+	}
 }
 #pragma clang diagnostic pop
 
@@ -1213,6 +1250,16 @@ static double paceTarget;         // the refresh the frame being presented was p
 #define PACE_EXTRA_MAX 0.006
 void mc_pace_adapt(int on) { paceAdapt = on; }
 double mc_pace_extra_ms(void) { return paceExtra * 1e3; }
+// The refresh rate the game's frames are shown at (Hz), 0 when unknown: the paced display link's period when the pacer runs,
+// else the window's screen's highest rate (ProMotion panels report 120, an external monitor its mode). Main thread only.
+double mc_refresh_hz(void) {
+	double p = refreshPeriod;
+	if (p > 0) return 1 / p;
+	@autoreleasepool {
+		NSScreen *screen = windowScreen();
+		return screen ? (double) screen.maximumFramesPerSecond : 0;
+	}
+}
 static void paceWatch(id<CAMetalDrawable> drawable) {
 	if (!paceAdapt || paceTarget <= 0) return;
 	double target = paceTarget, period = refreshPeriod;
@@ -1231,6 +1278,7 @@ int mc_pace(double margin) {
 		started = 1;
 		startDisplayLink();
 	}
+	followDisplay();
 	double now = CACurrentMediaTime(), anchor = nextRefresh, period = refreshPeriod, lead = gpuLatency + margin + paceExtra;
 	if (lastPace > 0) frameInterval += (now - lastPace - frameInterval) * 0.1;
 	lastPace = now;

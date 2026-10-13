@@ -84,9 +84,10 @@ public final class Telemetry {
 				String gpu = gpus > 0 ? String.format("gpu p50 %.1f ms p99 %.1f", pct(gpuMs, gpus, 0.50f), pct(gpuMs, gpus, 0.99f)) : "gpu n/a";
 				Runtime rt = Runtime.getRuntime();
 				long allocated = Native.deviceAllocated(ctx);
-				Log.info(String.format("[mcopt tick] %.0f fps (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
+				double hz = Native.refreshHz();
+				Log.info(String.format("[mcopt tick] %.0f fps%s (1%% low %.0f, worst frame %.1f ms) | frame p50 %.1f ms p99 %.1f | %s | render thread waited %.2f ms/frame on the GPU"
 						+ " | GPU memory %.2f GB of %.1f GB | heap %.1f/%.1f GB | %s | %s",
-					n / seconds, 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
+					n / seconds, hz > 0 ? String.format(" on a %.0f Hz display", hz) : "", 1000 / Math.max(p99, 0.001f), worst, p50, p99, gpu, waitNs / 1e6 / n,
 					gb(allocated), gb(workingSet), gb(rt.totalMemory() - rt.freeMemory()), gb(rt.maxMemory()), chunks(), thermal(power)));
 				boolean over = workingSet > 0 && allocated > workingSet;
 				if (over && !overBudget) {
