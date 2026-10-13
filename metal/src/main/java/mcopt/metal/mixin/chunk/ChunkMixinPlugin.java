@@ -43,7 +43,7 @@ public final class ChunkMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
 		String name = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
-		if (!ChunkOpt.mixinEnabled(name)) return false;
+		if (!ChunkOpt.mixinEnabled(name) || !mcopt.metal.SodiumCompat.ok(name)) return false;
 		for (String mod : YIELDS_TO.getOrDefault(name, List.of())) {
 			if (FabricLoader.getInstance().isModLoaded(mod)) {
 				mcopt.metal.Log.info("mcopt-chunk: " + name + " not applied: " + mod + " is loaded");

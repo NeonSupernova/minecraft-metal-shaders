@@ -42,7 +42,7 @@ public final class ShadeMixinPlugin implements IMixinConfigPlugin {
 
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-		return mcopt.metal.shade.Shade.ENABLED;
+		return mcopt.metal.shade.Shade.ENABLED && mcopt.metal.SodiumCompat.ok(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1));
 	}
 
 	@Override

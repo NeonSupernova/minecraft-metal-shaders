@@ -14,7 +14,7 @@ public final class InstallHelp {
 			+ "\n"
 			+ "To install it (Apple Silicon Mac, macOS 26 or later):\n"
 			+ "1. Install Fabric for Minecraft 26.3: https://fabricmc.net/use/installer/\n"
-			+ "2. Put this jar and Sodium 0.9.2 (0.9.2-beta.1 to 0.9.3-alpha.1) for 26.3 in your mods folder:\n"
+			+ "2. Put this jar and Sodium 0.9.2 or newer for 26.3 in your mods folder:\n"
 			+ "   ~/Library/Application Support/minecraft/mods (official launcher)\n"
 			+ "3. Start Minecraft with the Fabric profile.\n"
 			+ "\n"

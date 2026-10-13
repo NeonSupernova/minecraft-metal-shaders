@@ -94,8 +94,9 @@ You need:
 
 - An **Apple Silicon Mac** (M1 or newer) on **macOS 26** or later
 - **Minecraft: Java Edition 26.3** with **Fabric Loader 0.19.5** or newer, on **Java 25**
-- **Sodium 0.9.2** for 26.3 ([Modrinth](https://modrinth.com/mod/sodium)); every 26.3 build from 0.9.2-beta.1 to 0.9.3-alpha.1 works too
-  (checked with `tools/sodium-compat`)
+- **Sodium 0.9.2 or newer** for 26.3 ([Modrinth](https://modrinth.com/mod/sodium)). 0.9.2-beta.1 to 0.9.3-alpha.1 are checked
+  (`tools/sodium-compat`). On a newer Sodium the mod checks each of its Sodium hooks against that Sodium at startup and leaves out
+  any that no longer fit, with a warning in the log, instead of failing to start
 
 Steps:
 
@@ -158,7 +159,7 @@ Made by Gael Quintanilla, with Claude (Anthropic) writing most of the code.
 En una MacBook Pro M4 a resolución completa (3024×1964), Iris + Complementary corre a ~22 FPS. Con Metal Shaders,
 la misma Mac a la misma resolución da **90–120 FPS** (preset balanceado), y **135–150 FPS** a 1440p.
 
-**Instalación:** Mac con Apple Silicon y macOS 26, Minecraft 26.3 con Fabric 0.19.5 y Java 25, y Sodium 0.9.2 (de 0.9.2-beta.1 a 0.9.3-alpha.1).
+**Instalación:** Mac con Apple Silicon y macOS 26, Minecraft 26.3 con Fabric 0.19.5 y Java 25, y Sodium 0.9.2 o más nuevo (de 0.9.2-beta.1 a 0.9.3-alpha.1 comprobados).
 Pon el jar de [Releases](https://github.com/GaelQuinta/minecraft-metal-shaders/releases/latest) y el de Sodium en la
 carpeta `mods` y abre el juego: los shaders se activan solos (preset balanceado). Para cambiar el preset, edita
 `config/mcopt.properties` (`mcopt.shade.preset=performance|balanced|quality|ultra`); la resolución de salida se cambia con

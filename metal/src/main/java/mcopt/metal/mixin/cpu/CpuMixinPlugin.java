@@ -17,6 +17,10 @@ public final class CpuMixinPlugin implements IMixinConfigPlugin {
 	@Override public String getRefMapperConfig() { return null; }
 	@Override public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
 		String name = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
+		return wanted(name) && mcopt.metal.SodiumCompat.ok(name);
+	}
+
+	private static boolean wanted(String name) {
 		if (name.endsWith("Access")) return Cpu.cullHooks();
 		if (name.startsWith("Cull")) return Cpu.cullHooks();
 		if (name.startsWith("AbFrame")) return Cpu.AB_SHOTS || Cpu.PASS_AB || Cpu.LEASH_AB || Cpu.LISTS_AB || Cpu.MODEL_AB || Cpu.MERGE_AB || mcopt.metal.cpu.EntityBox.AB;
